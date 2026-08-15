@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router({ mergeParams: true });
 const uploadController = require('../../controllers/uploadController');
+const contractUploadController = require('../../controllers/contractUploadController');
 
 router.post(
   '/contrattoFirmato/:idContratto',
@@ -8,8 +9,8 @@ router.post(
     console.log('CONTENT-TYPE:', req.headers['content-type']);
     next();
   },
-  uploadController.uploadContrattoMiddleware,
-  uploadController.uploadContratto
+  contractUploadController.uploadContrattoMiddleware,
+  contractUploadController.uploadContratto
 );
 
 router.post(
