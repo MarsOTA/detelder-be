@@ -14,10 +14,17 @@ const mysqlConfig = {
     connectTimeout: 60000
 }
 
-// Aiven presents a publicly trusted certificate and requires encrypted connections.
-// Local development remains compatible with MySQL instances that do not expose TLS.
+// Aiven richiede TLS.
+// Su Vercel la CA viene fornita tramite DB_CA_CERT.
 if (isAiven) {
-    mysqlConfig.ssl = { rejectUnauthorized: true }
+    if (!process.env.DB_CA_CERT) {
+        throw new Error('DB_CA_CERT is required for Aiven MySQL connections')
+    }
+
+    mysqlConfig.ssl = {
+        ca: process.env.DB_CA_CERT.replace(/\\n/g, '\n'),
+        rejectUnauthorized: true
+    }
 }
 
 const mysqlPool = mysql.createPool(mysqlConfig)
