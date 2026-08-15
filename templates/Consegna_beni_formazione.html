@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Attività di formazione e consegna beni in dotazione</title>
+    <style>
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #000;
+            margin: 40px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 18px;
+            margin-bottom: 30px;
+        }
+
+        p {
+            margin: 10px 0;
+            text-align: justify;
+        }
+
+        ul {
+            margin: 15px 0 15px 25px;
+            list-style-type: disc;
+        }
+
+        li {
+            margin-bottom: 10px;
+        }
+
+        .firma {
+            margin-top: 50px;
+        }
+
+        /* BLOCCO FIRMA A DESTRA – CORRETTO */
+        .firma-destra {
+            margin-top: 50px;
+            width: 100%;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        .firma-destra .firma-box {
+            text-align: center;
+            min-width: 280px;
+        }
+
+        .footer {
+            margin-top: 60px;
+            font-size: 12px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Attività di formazione e consegna beni in dotazione</h1>
+
+    <p>
+        Io sottoscritto <strong><%= operatore_nome_cognome %></strong>,
+        codice fiscale <strong><%= operatore_codice_fiscale %></strong>,
+        residente in <strong><%= operatore_indirizzo_residenza %>
+        <%= operatore_civico_residenza %>
+        <%= operatore_citta_residenza %>
+        (<%= operatore_provincia_residenza %>)</strong>,
+        domiciliato in <strong><%= operatore_indirizzo_domicilio %>
+        <%= operatore_civico_domicilio %>
+        <%= operatore_citta_domicilio %>
+        (<%= operatore_provincia_domicilio %>)</strong>,
+        nella mia qualità di dipendente di <strong>DETELDER S.R.L.</strong>,
+        addetto all’attività di <strong>Assistenza al cliente – Servizi di Doorman</strong>,
+    </p>
+
+    <p><strong>dichiaro e confermo quanto segue:</strong></p>
+
+    <ul>
+        <li>
+            di aver partecipato per la sua intera durata al corso di formazione
+            tenuto dal datore di lavoro con il formatore interno
+            Sig. <strong>SANTONI MAURIZIO FELICE</strong>.
+        </li>
+
+        <li>
+            che detta formazione ha avuto ad oggetto le seguenti tematiche:
+            <ul>
+                <li>SORVEGLIANZA E CONTROLLO ACCESSI</li>
+                <li>GESTIONE DEI FLUSSI DI INGRESSO E USCITA DEI CLIENTI</li>
+            </ul>
+        </li>
+
+        <li>
+            di avere tempestivamente ricevuto in dotazione, contestualmente
+            all’avvio della mia attività, i seguenti beni strumentali
+            e/o dispositivi di sicurezza:
+            <br><br>
+            <strong><%= elenco_beni_consegnati %></strong>
+        </li>
+
+        <li>
+            che il dress code necessario all’esercizio della mia attività
+            consiste nei seguenti capi di abbigliamento:
+            <br><br>
+            <strong><%= elenco_abbigliamento_consegnato %></strong>
+        </li>
+    </ul>
+
+    <p>
+        Dichiaro e confermo altresì di aver ricevuto i suddetti beni nuovi,
+        puliti ed in ottimo stato di conservazione e mi impegno a preservarli
+        nello stato in cui mi sono stati consegnati.
+    </p>
+
+    <p>
+        Al termine della mia attività lavorativa mi impegno a restituire
+        tempestivamente al datore di lavoro i beni ricevuti,
+        nello stato originario, fatta salva la normale usura.
+    </p>
+
+    <p>
+        In alternativa, autorizzo sin d’ora il datore di lavoro
+        a trattenere il valore dei beni non restituiti
+        mediante decurtazione dalla mia ultima busta paga.
+    </p>
+
+    <div class="firma">
+        <p>In fede,</p>
+        <p>Milano, <%= data_firma_documento %></p>
+    </div>
+
+    <!-- FIRMA LAVORATORE ALLINEATA A DESTRA -->
+    <div class="firma-destra">
+        <div class="firma-box">
+            _________________________<br>
+            (<%= operatore_nome_cognome %>)
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>
+            <strong>DETELDER srl</strong><br>
+            Viale Bianca Maria 3 - 20122 Milano (MI) •
+            P.IVA e C.F. 13673740968 • deteldersrl@pec.it
+        </p>
+        <p>
+            Cap. Soc. 20.000 euro • www.detelder.com • Codice SDI: M5UXCR1
+        </p>
+    </div>
+
+</body>
+</html>

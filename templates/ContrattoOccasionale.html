@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+  <meta charset="UTF-8" />
+  <title>Lavoro autonomo occasionale</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 6mm 0 10mm 0;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      background: #fff;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      font-size: 11px;
+      line-height: 1.5;
+      color: #000;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .sheet {
+      width: 210mm;
+      min-height: 297mm;
+      margin: 0 auto;
+      background: #fff;
+      position: relative;
+    }
+
+    /*
+    .header {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: #fff;
+      border-bottom: 1px solid #d9d9d9;
+      padding: 6px 10mm;
+      text-align: right;
+      z-index: 10;
+    }
+
+    .logo {
+      height: 24px;
+      width: auto;
+      display: inline-block;
+      object-fit: contain;
+    }
+      */
+
+    /* HEADER */
+    .header {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      width: 100%;
+      margin-bottom: 40px;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: bold;
+      font-size: 20px;
+    }
+
+    .logo img {
+      width: 150px;
+      /* dimensione fissa più affidabile */
+      height: auto;
+    }
+
+
+    .content {
+      width: 100%;
+      padding: 18mm 10mm 6mm 10mm;
+    }
+
+    .footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #fff;
+      color: #000;
+      padding: 4px 10mm 2px 10mm;
+      text-align: center;
+      border-top: 1px solid #000;
+      z-index: 10;
+      line-height: 1.2;
+    }
+
+    .footer-company {
+      font-size: 8.5px;
+      font-weight: 700;
+      margin-bottom: 1px;
+      letter-spacing: 0.1px;
+    }
+
+    .footer-row {
+      font-size: 7px;
+    }
+
+    h1,
+    h2 {
+      text-align: center;
+      line-height: 1.3;
+      margin: 0 0 10px 0;
+    }
+
+    p {
+      margin: 0 0 8px 0;
+      text-align: justify;
+    }
+
+    ul {
+      margin: 4px 0 8px 18px;
+      padding: 0;
+    }
+
+    li {
+      margin: 0 0 3px 0;
+    }
+
+    .center {
+      text-align: center;
+    }
+
+    .center-italic {
+      text-align: center;
+      font-style: italic;
+    }
+
+    .left-italic {
+      text-align: left;
+      font-style: italic;
+    }
+
+    .left-italic-center {
+      text-align: center;
+      font-style: italic;
+    }
+
+    .titoloContratto {
+      text-align: center;
+      font-weight: 700;
+      font-size: 13px;
+      line-height: 1.3;
+      margin: 0 0 8px 0;
+    }
+
+    .left-section-title {
+      font-weight: bold;
+      margin-top: 12px;
+      margin-bottom: 5px;
+      text-align: left;
+    }
+
+    .keep-together {
+      page-break-inside: avoid;
+      break-inside: avoid-page;
+    }
+
+    .section-block {
+      page-break-inside: avoid;
+      break-inside: avoid-page;
+    }
+
+    .signature-block {
+      margin-top: 22px;
+      width: 100%;
+      table-layout: fixed;
+      page-break-inside: avoid;
+      break-inside: avoid-page;
+      display: table;
+    }
+
+    .signature {
+      display: table-cell;
+      width: 50%;
+      text-align: center;
+      vertical-align: top;
+      padding: 0 8px;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid #bbb;
+      margin: 16px 0;
+    }
+
+    @media screen {
+      body {
+        background: #d7d7d7;
+        padding: 20px 0;
+      }
+
+      .sheet {
+        box-shadow: 0 0 20px rgba(0, 0, 0, 0.20);
+      }
+    }
+
+    @media print {
+      body {
+        background: #fff;
+      }
+
+      .sheet {
+        width: auto;
+        min-height: auto;
+        margin: 0;
+        box-shadow: none;
+      }
+
+      h1,
+      h2,
+      .titoloContratto,
+      .left-section-title {
+        page-break-after: avoid;
+        break-after: avoid-page;
+      }
+
+      .keep-together,
+      .signature-block,
+      .section-block {
+        page-break-inside: avoid;
+        break-inside: avoid-page;
+      }
+
+      p,
+      ul,
+      li {
+        page-break-inside: auto;
+        break-inside: auto;
+      }
+
+      p {
+        orphans: 3;
+        widows: 3;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="sheet">
+    
+   <!-- 
+    <div class="header">
+      <img src="https://example.com/logo_detelder.png" class="logo" alt="logo_detelder" />
+    </div>
+-->
+
+    <div class="header">
+        <div class="logo">
+            <img src="data:image/png;base64,<%= logoBase64 %>" />
+        </div>
+    </div>    
+
+    <main class="content">
+
+      <div class="titoloContratto">LAVORO AUTONOMO OCCASIONALE</div>
+      <div class="titoloContratto" style="text-decoration: underline;">CONTRATTO DI COLLABORAZIONE OCCASIONALE</div>
+      <p class="center-italic">(articoli 2222 c.c. e seguenti)</p>
+
+      <p class="left-italic-center">
+        Tra
+      </p>
+
+      <p class="left-italic">
+        la società <b>DETELDER S.R.L.</b> con sede in <b>viale Bianca Maria 3 - 20122 Milano</b>, C.F./P.I.
+        <b>13673740968</b>
+      </p>
+
+      <p class="center-italic">
+        (committente)
+      </p>
+
+      <p class="left-italic-center">
+        e
+      </p>
+
+      <p class="left-italic">
+        Il sig./la sig.ra <strong>
+          <%= operatore_nome_cognome %>
+        </strong> nato/a a
+        <strong>
+          <%= operatore_luogo_nascita %>
+        </strong>
+        (<%= operatore_provincia_nascita %>), il
+          <strong>
+            <%= operatore_data_nascita %>
+          </strong>, residente a
+          <strong>
+            <%= operatore_citta_residenza %>
+          </strong>
+            <%= operatore_provincia_residenza %> in
+          <strong>
+            <%= operatore_indirizzo_residenza %>
+              <%= operatore_civico_residenza %>
+          </strong>, CF:
+          <strong>
+            <%= operatore_codice_fiscale %>
+          </strong>
+      </p>
+
+      <p class="center-italic">
+        (prestatore)
+      </p>
+
+      <p class="left-section-title">Si stipula quanto segue:</p>
+
+      <p>
+        Il committente conferisce incarico al/alla sig./sig.ra
+        <strong>
+          <%= operatore_nome_cognome %>
+        </strong>, che accetta, di prestare la
+        propria attività di collaborazione occasionale avente per oggetto:
+        <strong>Assistenza al cliente - Servizi di Doorman</strong> per conto della società
+        <strong>DETELDER S.R.L.</strong> nel periodo dal
+        <strong>
+          <%= data_inizio_contratto %>
+        </strong> al
+        <strong>
+          <%= data_fine_contratto %>
+        </strong>.
+      </p>
+
+      <div class="section-block">
+        <p class="left-section-title" style="text-decoration: underline;">Modalità di svolgimento dell'incarico</p>
+
+        <p>
+          L'incarico sarà svolto dal prestatore in piena autonomia tecnica ed
+          organizzativa, senza alcun vincolo di subordinazione e senza l'inserimento
+          nell'organizzazione gerarchica del committente. Il suddetto incarico si
+          configura come una prestazione di lavoro autonomo occasionale ai sensi
+          dell'art. 2222 c.c.
+        </p>
+
+        <p>
+          Nell'espletamento dell'attività il prestatore opererà con la diligenza
+          richiesta dal ruolo rivestito e dalla natura dell'incarico assunto.
+        </p>
+      </div>
+
+      <div class="section-block">
+        <p class="left-section-title" style="text-decoration: underline;">Corrispettivo</p>
+
+        <p>
+          Il corrispettivo per la prestazione è determinato in misura forfettaria pari a complessivi euro
+          <strong>100</strong>, da intendersi come stima iniziale di riferimento, al lordo della ritenuta d'acconto del
+          20%.
+          L'importo verrà rideterminato a consuntivo in base ai giorni di lavoro effettivamente prestati, potendo
+          risultare quindi superiore o inferiore.
+          Il prestatore è tenuto ad indicare, tramite propria dichiarazione, la ricorrenza o meno dell'obbligo
+          contributivo INPS dovuto alla Gestione Separata al superamento del limite di € 5.000,00 lordi annui, in
+          relazione ai compensi della stessa natura già percepiti da altri soggetti nel corso del medesimo anno solare.
+        </p>
+      </div>
+
+      <div class="section-block">
+        <p class="left-section-title" style="text-decoration: underline;">Risoluzione del contratto</p>
+
+        <p>
+          Fatta salva la possibilità, per entrambe le parti, di risolvere il presente contratto in qualsiasi momento,
+          con preavviso di almeno 15 giorni di
+          calendario, qualora nello svolgimento dell'incarico si accerti che
+          l'esecuzione non proceda secondo le condizioni stabilite nel presente
+          incarico, ovvero venga condotta con negligenza ed imperizia, la società si
+          riserva la facoltà di risolvere il contratto, ai sensi dell'art. 2224
+          codice civile. In tale caso il compenso stabilito nel presente contratto si
+          intenderà proporzionato in relazione alla parte di opera compiuta.
+        </p>
+
+        <p>
+          Il pagamento verrà effettuato dietro sottoscrizione di apposita ricevuta.
+        </p>
+      </div>
+
+      <div class="keep-together">
+        <p class="center-italic">
+          --- Letto, approvato e sottoscritto ---
+        </p>
+
+        <p>
+          <strong>Milano</strong>,
+          <strong>
+            <%= data_firma_documento %>
+          </strong>
+        </p>
+      </div>
+
+      <div class="signature-block">
+        <div class="signature">
+          <p><strong>
+              <%= operatore_nome_cognome %>
+            </strong></p>
+          <br /><br /><br />
+          <p>_____________________________</p>
+        </div>
+        <div class="signature">
+          <p><strong>Stefano Piovesan</strong></p>
+          <br /><br /><br />
+          <p>_____________________________</p>
+        </div>
+      </div>
+
+    </main>
+
+    <div class="footer">
+      <div class="footer-company">DETELDER srl</div>
+      <div class="footer-row">
+        Viale Bianca Maria 3 – 20122 Milano (MI) • P.IVA e C.F. 13673740968 • deteldersrl@pec.it
+      </div>
+      <div class="footer-row">
+        Cap. Soc. 20.000 euro • www.detelder.com • Codice SDI: M5UXCR1
+      </div>
+    </div>
+  </div>
+</body>
+
+</html>

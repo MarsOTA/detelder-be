@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <title>Contratto di lavoro intermittente</title>
+  <style>
+    /* Impostazioni pagina A4 per PDF */
+    /*
+    @page {
+      size: A4;
+      margin: 2cm 2.5cm 2cm 2.5cm; 
+    }
+    */
+
+    /* Margini visibili anche in HTML */
+    body {
+      font-family: Arial, sans-serif;
+      line-height: 1.5;
+      font-size: 12px;
+      margin: 0;
+      padding: 2cm 2.5cm 2cm 2.5cm; /* stessi margini della @page */
+      box-sizing: border-box;
+    }
+
+    h1, h2 {
+      text-align: center;
+      margin-top: 0;
+    }
+
+    .center {
+      text-align: center;
+    }
+
+    .center-italic {
+      text-align: center;
+      font-style: italic;
+    }
+
+    .section-title {
+      font-weight: bold;
+      text-transform: uppercase;
+      margin-top: 20px;
+    }
+
+    .signature-block {
+      margin-top: 40px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .signature {
+      width: 45%;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>CONTRATTO DI LAVORO INTERMITTENTE (O A CHIAMATA)</h1>
+
+  <!-- PRIMA PARTE CONTRATTUALE, IMPAGINATA COME NELLO SCREENSHOT -->
+  <p class="center-italic">
+    Tra
+  </p>
+
+  <p class="center-italic">
+    la società DETELDER S.R.L. con sede in Milano, viale Luigi Majno 17/A, C.F./P.I. 13066390967
+  </p>
+
+  <p class="center-italic">
+    e
+  </p>
+
+  <p class="center-italic">
+    Il sig./la sig.ra <strong><%= operatore_nome_cognome %></strong> nato/a a
+    <strong><%= operatore_luogo_nascita %></strong> <%= operatore_provincia_nascita %>, il
+    <strong><%= operatore_data_nascita %></strong>, residente a
+    <strong><%= operatore_citta_residenza %></strong> (<%= operatore_provincia_residenza %>)
+    in <strong><%= operatore_indirizzo_residenza %> <%= operatore_civico_residenza %> </strong>, CF:
+    <strong><%= operatore_codice_fiscale %></strong>
+  </p>
+
+  <p class="section-title center">
+    PREMESSO
+  </p>
+
+  <p>
+    Che a causa di particolari necessità aziendali (o a causa del particolare settore produttivo aziendale),
+    la <strong>società DETELDER S.R.L.</strong> intende ricorrere a prestazioni di carattere discontinuo,
+    nel rispetto delle disposizioni del CCNL applicato
+    <strong><%= nome_ccnl %></strong>, viene per tal motivo stipulato, ai sensi dell’art. 13 del D.Lgs. n. 81/2015,
+    il presente
+  </p>
+
+  <h2>CONTRATTO DI LAVORO INTERMITTENTE</h2>
+
+  <p class="section-title">IPOTESI PER L’AMMISSIONE ALLA STIPULA:</p>
+
+  <p>
+    _X_ Svolgimento di prestazioni di carattere discontinuo o intermittente secondo le esigenze ovvero per
+    periodi predeterminati nell'area della settimana, del mese o dell'anno individuati dall’applicato (1);
+  </p>
+  <p>
+    <%= over_55 %>
+    Prestazione resa da soggetto con più di 55 anni di età
+  </p>
+  <p>
+    <%= under_24 %>
+    Prestazione resa da soggetto con meno di 24 anni di età (purché le prestazioni lavorative siano
+    svolte entro il venticinquesimo anno).
+  </p>
+
+  <p class="section-title">Durata</p>
+
+  <p>
+    Il Contratto avrà una durata a tempo determinato e decorre a far data dal
+    <strong><%= data_inizio_contratto %></strong> fino al
+    <strong><%= data_fine_contratto %></strong>.
+  </p>
+
+  <p>
+    (Ad eccezione dei settori del turismo, dei pubblici esercizi e dello spettacolo, il contratto di lavoro intermittente è ammesso per un periodo complessivamente non superiore alle 400 giornate di effettivo lavoro nell'arco di tre anni solari ex art. 13, co. 3, D.Lgs. n. 81/2015).
+  </p>
+
+  <p class="section-title">Luogo e orario di lavoro</p>
+
+  <p>
+    Lei svolgerà la prestazione lavorativa presso la sede di MILANO ubicata in: VIA A. RIZZOLI 4.
+  </p>
+  <p>
+    Si precisa che, in ogni caso, verrà rispettato il riposo settimanale previsto - ai sensi dell’art. 9
+    D.Lgs. 66/2003. Con la sottoscrizione del presente contratto di lavoro lei conferma il rispetto delle
+    disposizioni previsti dal D.Lgs 66/2003 e circ. min. lavoro n. 8/2005 in materia di orario di lavoro
+    settimanale e di riposo settimanale.
+  </p>
+
+  <p class="section-title">Inquadramento</p>
+
+  <p>
+    Le sarà applicato il contratto in uso presso l’azienda
+    <strong><%= nome_ccnl %></strong> e sarà inquadrato nel livello
+    <strong><%= livello_inquadramento%></strong> con la seguente qualifica:
+    <strong><%= tipo_qualifica%></strong>.
+  </p>
+
+  <p class="section-title">Mansioni svolte</p>
+
+  <p>
+    Lei svolgerà le mansioni qui di seguito riportate:
+    <strong><%= lista_mansioni %></strong> (e mansioni previste dal livello di
+    inquadramento a lei assegnato).
+  </p>
+
+  <p class="section-title">Forme e modalità di chiamata</p>
+
+  <p>
+    La <strong>società DETELDER S.R.L.</strong> richiederà l'esecuzione della prestazione di lavoro con preavviso
+    non inferiore a un giorno lavorativo ai sensi dell’art. 15, co. 1, lett. b), D.Lgs. n. 81/2015, in base
+    alle modalità qui di seguito riportate:
+  </p>
+  <ul>
+    <li>TELEFONICAMENTE</li>
+    <li>EMAIL</li>
+    <li>SMS</li>
+  </ul>
+
+  <p class="section-title">Trattamento economico</p>
+
+  <p>
+    Lei riceverà un trattamento economico che non potrà essere meno favorevole rispetto a quello previsto
+    per un lavoratore di pari livello, a parità di mansioni svolte. Il Suo trattamento economico, pertanto,
+    sarà quello previsto dal contratto:
+    <strong><%= nome_ccnl %></strong> applicato per il corrispondente livello di
+    inquadramento <strong><%= livello_inquadramento%></strong>, pari a
+    <strong>€ <%= stipendio_mensile_lordo %></strong> mensili lordi, da riproporzionare
+    alle ore di lavoro effettivamente eseguite nel mese.
+  </p>
+
+  <p>
+    Per tutto il periodo durante il quale Lei resterà a disposizione per rispondere alla chiamata non sarà
+    titolare di alcun diritto riconosciuto ai lavoratori subordinati né maturerà alcun trattamento
+    economico e normativo.
+  </p>
+
+  <p>
+    Il pagamento della retribuzione avverrà, mediante prospetto paga, in base ai tempi ed alle modalità
+    previste per la generalità dei lavoratori occupati nella medesima azienda.
+  </p>
+
+  <p class="section-title">Garanzia di disponibilità</p>
+
+  <p>
+    Per l’intera durata del contratto il lavoratore non garantisce la sua disponibilità, in attesa di
+    chiamata, ad effettuare eventuale prestazione lavorativa.
+  </p>
+
+  <p class="section-title">Periodo di prova</p>
+
+  <p>
+    La Sua assunzione sarà sottoposta ai sensi del CCNL vigente applicato ad un periodo di prova della
+    durata di <strong><%= giorni_periodo_prova %></strong> giorni di effettivo lavoro, durante il quale resta
+    reciproco il diritto di risolvere il rapporto di lavoro in qualsiasi momento senza per questo essere
+    tenuti alla corresponsione di preavviso o indennità di sorta da ambo le parti. Superato il suddetto
+    periodo, il rapporto di lavoro si intenderà automaticamente confermato.
+  </p>
+
+  <p class="section-title">Rinvio</p>
+
+  <p>
+    Per tutto quanto non espressamente contenuto nel presente contratto si rinvia a quanto previsto dalle
+    disposizioni di legge (art. 19 e ss. D.Lgs. n. 81/2015), relative al lavoro intermittente ed a quanto
+    disciplinato dal CCNL <strong><%= nome_ccnl %></strong>.
+  </p>
+
+  <!-- SEPARATORE --- --- CENTRATO COME RICHIESTO -->
+  <p class="center-italic">
+    --- Letto, approvato e sottoscritto ---
+  </p>
+
+  <p>
+    <strong>Milano</strong>, <strong><%= data_firma_documento %></strong>
+  </p>
+
+  <div class="signature-block">
+    <div class="signature">
+      <p><strong>LAVORATORE / LAVORATRICE</strong></p>
+      <br/><br/><br/>
+      <p>_____________________________</p>
+      <p><%= operatore_nome_cognome %></p>
+    </div>
+    <div class="signature">
+      <p><strong>DATORE DI LAVORO</strong></p>
+      <br/><br/><br/>
+      <p>_____________________________</p>
+      <p>Stefano Piovesan</p>
+    </div>
+  </div>
+
+  <hr/>
+
+  <p>
+    Il sottoscritto, avendo preso visione dell'informativa (art. 13, Regolamento UE n. 2016/679) ed essendo
+    dunque informato circa i suoi contenuti, con particolare riferimento alle modalità e finalità del
+    trattamento, presta il proprio consenso al trattamento dei dati personali.
+  </p>
+
+  <p class="center">
+    _____________________________<br/>
+    <%= operatore_nome_cognome %>
+  </p>
+
+  <p style="font-size: 10px; margin-top: 30px;">
+    (1) in assenza di disciplina contrattuale ai sensi del D.M. 23 ottobre 2004 è ammessa la stipulazione di
+    contratti di lavoro intermittente con riferimento alle tipologie di attività indicate nella tabella
+    allegata al R.D. 6 dicembre 1923, n. 2657 (cfr. Ministero del lavoro, circolare 18 luglio 2012, n. 18;
+    1° agosto 2012, n. 20).
+  </p>
+
+</body>
+</html>

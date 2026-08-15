@@ -1,0 +1,81 @@
+operatore_nome_cognome
+operatore_luogo_nascita
+operatore_provincia_nascita
+operatore_data_nascita
+operatore_citta_residenza
+operatore_provincia_residenza
+operatore_indirizzo_residenza
+operatore_codice_fiscale
+nome_ccnl
+svolgimento_prestazioni_discontinue //true, false
+over_55  //true, false
+under_24 //true, false
+data_inizio_contratto
+data_fine_contratto
+livello_inquadramento
+tipo_qualifica
+lista_mansioni
+stipendio_mensile_lordo
+giorni_periodo_prova
+
+
+
+
+
+
+
+
+        /*
+
+operatore_nome_cognome
+operatore_luogo_nascita
+operatore_provincia_nascita
+operatore_data_nascita
+operatore_citta_residenza
+operatore_provincia_residenza
+operatore_indirizzo_residenza
+operatore_codice_fiscale
+nome_ccnl
+svolgimento_prestazioni_discontinue //true, false
+over_55  //true, false
+under_24 //true, false
+data_inizio_contratto
+data_fine_contratto
+livello_inquadramento
+tipo_qualifica
+lista_mansioni
+stipendio_mensile_lordo
+giorni_periodo_prova
+
+
+        */
+
+
+
+        // Dati statici di esempio
+        const data = {
+            operatore_nome_cognome: "Mario Rossi",
+            operatore_luogo_nascita: "Via dei castelli romani",
+            operatore_provincia_nascita: "ROMA",
+            operatore_data_nascita: "21-06-1982",
+            operatore_citta_residenza: "Pisa",
+            operatore_provincia_residenza: "Pisa",
+            operatore_indirizzo_residenza: "via dei pini 23",
+            operatore_codice_fiscale: "cgt65rtey76542edfs",
+            nome_ccnl: "contratto metal meccanico",
+            svolgimento_prestazioni_discontinue: "_X_",
+            over_55: "___",
+            under_24: "_X_",
+            data_inizio_contratto: "26-11-2025",
+            data_fine_contratto: "29-11-2025",
+            livello_inquadramento: "3° livello",
+            tipo_qualifica: "Portiere",
+            lista_mansioni: "apri porta, sicurezza, pulizie",
+            stipendio_mensile_lordo: "1987",
+            giorni_periodo_prova: "6"
+        };
+
+
+
+
+
