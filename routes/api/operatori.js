@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const operatoriController = require('../../controllers/operatoriController');
 const contractPdfController = require('../../controllers/contractPdfController');
+const contrattiManualiController = require('../../controllers/contrattiManualiController');
 
 router.route('/')
     .get(operatoriController.getOperatori)
@@ -64,6 +65,9 @@ router.route('/stato/:id')
 
 router.route('/generate-pdf')
     .post(operatoriController.generaPdf);
+
+router.route('/creaContrattoManuale')
+    .post(contrattiManualiController.creaContrattoManuale);
 
 router.route('/creaContratto')
     .post(contractPdfController.creaContratto);
