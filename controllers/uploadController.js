@@ -1,16 +1,17 @@
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
-const fsPromises = require("fs/promises");
-const { put, get } = require("@vercel/blob");
+
+const { put, get, del } = require("@vercel/blob");
 const { Readable } = require("node:stream");
 
-const operatoreServices = require('../services/operatoreServices');
-const allegatiOpeartoreServices = require('../services/allegatiOpeartoreServices');
+const operatoreServices = require("../services/operatoreServices");
+const allegatiOpeartoreServices = require("../services/allegatiOpeartoreServices");
 
 
 // ======================================================
 // CONTRATTI
+// PER ORA RESTANO SU FILESYSTEM
 // ======================================================
 
 const creaUploadContratti = () => {
@@ -19,148 +20,234 @@ const creaUploadContratti = () => {
 
         destination: async (req, file, cb) => {
 
-            const { idContratto } = req.params;
+            try {
 
-            console.log(
-                "idContratto destination: " + idContratto
-            );
+                const { idContratto } = req.params;
 
-            const idOperatore =
-                await operatoreServices.getIdOpetarore(
+                console.log(
+                    "idContratto destination:",
                     idContratto
                 );
 
-            const baseDir = path.join(
-                process.env.HOME_CONTRATTI,
-                "output"
-            );
+                const idOperatore =
+                    await operatoreServices.getIdOpetarore(
+                        idContratto
+                    );
 
-            const operatoreDir = path.join(
-                baseDir,
-                `operatore_${idOperatore}`
-            );
-
-            cb(null, operatoreDir);
-        },
-
-        filename: async (req, file, cb) => {
-
-            const { idContratto } = req.params;
-            const { tipoContratto } = req.body;
-
-            console.log(
-                "idContratto filename: " + idContratto
-            );
-
-            const pathContratto =
-                await operatoreServices.getPathContratto(
-                    idContratto
+                const baseDir = path.join(
+                    process.env.HOME_CONTRATTI,
+                    "output"
                 );
 
-            const fileName = path.basename(
-                pathContratto
-            );
+                const operatoreDir = path.join(
+                    baseDir,
+                    `operatore_${idOperatore}`
+                );
 
-            const parsed = path.parse(fileName);
+                if (!fs.existsSync(operatoreDir)) {
 
-            let suffix = "";
+                    fs.mkdirSync(
+                        operatoreDir,
+                        {
+                            recursive: true
+                        }
+                    );
 
-            console.log(
-                "tipoContratto filename: " +
-                tipoContratto
-            );
+                }
 
-            if (
-                tipoContratto ===
-                "contrattoFirmato"
-            ) {
+                cb(null, operatoreDir);
 
-                suffix = "_firmato";
+            } catch (error) {
 
-            } else if (
-                tipoContratto ===
-                "contrattoUnilav"
-            ) {
+                console.error(
+                    "Errore destination contratto:",
+                    error
+                );
 
-                suffix = "_unilav";
+                cb(error);
 
             }
 
-            const newFileName =
-                `${parsed.name}${suffix}${parsed.ext}`;
+        },
 
-            cb(null, newFileName);
+
+        filename: async (req, file, cb) => {
+
+            try {
+
+                const { idContratto } = req.params;
+                const { tipoContratto } = req.body;
+
+                console.log(
+                    "idContratto filename:",
+                    idContratto
+                );
+
+                const pathContratto =
+                    await operatoreServices.getPathContratto(
+                        idContratto
+                    );
+
+                const fileName =
+                    path.basename(pathContratto);
+
+                const parsed =
+                    path.parse(fileName);
+
+
+                let suffix = "";
+
+                console.log(
+                    "tipoContratto filename:",
+                    tipoContratto
+                );
+
+
+                if (
+                    tipoContratto ===
+                    "contrattoFirmato"
+                ) {
+
+                    suffix = "_firmato";
+
+                } else if (
+                    tipoContratto ===
+                    "contrattoUnilav"
+                ) {
+
+                    suffix = "_unilav";
+
+                }
+
+
+                const newFileName =
+                    `${parsed.name}${suffix}${parsed.ext}`;
+
+
+                cb(
+                    null,
+                    newFileName
+                );
+
+            } catch (error) {
+
+                console.error(
+                    "Errore filename contratto:",
+                    error
+                );
+
+                cb(error);
+
+            }
+
         }
 
     });
 
+
     return multer({
+
         storage,
+
         limits: {
-            fileSize: 10 * 1024 * 1024
+            fileSize:
+                10 * 1024 * 1024
         }
+
     });
 
 };
 
 
 const uploadContrattoMiddleware =
-    creaUploadContratti().single("file");
+    creaUploadContratti()
+        .single("file");
 
 
-const uploadContratto = async (req, res) => {
+const uploadContratto =
+    async (req, res) => {
 
-    const { idContratto } = req.params;
-    const { tipoContratto } = req.body;
+        try {
 
-    if (!req.file) {
+            const { idContratto } =
+                req.params;
 
-        return res.status(400).json({
-            message: "File mancante"
-        });
+            const { tipoContratto } =
+                req.body;
 
-    }
 
-    console.log(
-        "req.file.filename uploadContratto: " +
-        req.file.filename
-    );
+            if (!req.file) {
 
-    console.log(
-        "req.file.path uploadContratto: " +
-        req.file.path
-    );
+                return res
+                    .status(400)
+                    .json({
+                        message:
+                            "File mancante"
+                    });
 
-    console.log(
-        "req.body.tipoContratto: " +
-        tipoContratto
-    );
+            }
 
-    await operatoreServices
-        .aggiornaPathContrattoFirmato(
-            req.file.path,
-            idContratto,
-            tipoContratto
-        );
 
-    try {
+            console.log(
+                "req.file.filename uploadContratto:",
+                req.file.filename
+            );
 
-        return res.status(200).json({
-            message: "Upload completato",
-            idContratto,
-            fileName: req.file.filename,
-            path: req.file.path
-        });
+            console.log(
+                "req.file.path uploadContratto:",
+                req.file.path
+            );
 
-    } catch (error) {
+            console.log(
+                "req.body.tipoContratto:",
+                tipoContratto
+            );
 
-        return res.status(500).json({
-            message: "Errore upload contratto"
-        });
 
-    }
+            await operatoreServices
+                .aggiornaPathContrattoFirmato(
+                    req.file.path,
+                    idContratto,
+                    tipoContratto
+                );
 
-};
+
+            return res
+                .status(200)
+                .json({
+
+                    message:
+                        "Upload completato",
+
+                    idContratto,
+
+                    fileName:
+                        req.file.filename,
+
+                    path:
+                        req.file.path
+
+                });
+
+
+        } catch (error) {
+
+            console.error(
+                "Errore upload contratto:",
+                error
+            );
+
+
+            return res
+                .status(500)
+                .json({
+                    message:
+                        "Errore upload contratto"
+                });
+
+        }
+
+    };
 
 
 // ======================================================
@@ -172,36 +259,47 @@ const creaUploadImmagineProfilo = () => {
 
     return multer({
 
-        storage: multer.memoryStorage(),
+        storage:
+            multer.memoryStorage(),
 
         limits: {
-            fileSize: 4 * 1024 * 1024
+            fileSize:
+                4 * 1024 * 1024
         },
 
-        fileFilter: (req, file, cb) => {
+        fileFilter:
+            (req, file, cb) => {
 
-            const allowedTypes = [
-                "image/jpeg",
-                "image/png",
-                "image/webp"
-            ];
+                const allowedTypes = [
 
-            if (
-                !allowedTypes.includes(
-                    file.mimetype
-                )
-            ) {
+                    "image/jpeg",
+                    "image/png",
+                    "image/webp"
 
-                return cb(
-                    new Error(
-                        "Formato immagine non supportato"
+                ];
+
+
+                if (
+                    !allowedTypes.includes(
+                        file.mimetype
                     )
+                ) {
+
+                    return cb(
+                        new Error(
+                            "Formato immagine non supportato"
+                        )
+                    );
+
+                }
+
+
+                cb(
+                    null,
+                    true
                 );
 
             }
-
-            cb(null, true);
-        }
 
     });
 
@@ -224,6 +322,7 @@ const uploadImmagineProfilo =
             const { tipoImmagine } =
                 req.body;
 
+
             if (!req.file) {
 
                 return res
@@ -237,9 +336,11 @@ const uploadImmagineProfilo =
 
 
             const tipiConsentiti = [
+
                 "primoPiano",
                 "mezzoBusto",
                 "figuraIntera"
+
             ];
 
 
@@ -265,12 +366,6 @@ const uploadImmagineProfilo =
                 ).toLowerCase();
 
 
-            /*
-             * Se il browser invia un file
-             * senza estensione valida,
-             * la ricaviamo dal MIME type.
-             */
-
             if (!extension) {
 
                 switch (
@@ -278,14 +373,19 @@ const uploadImmagineProfilo =
                 ) {
 
                     case "image/png":
+
                         extension = ".png";
                         break;
 
+
                     case "image/webp":
+
                         extension = ".webp";
                         break;
 
+
                     default:
+
                         extension = ".jpg";
 
                 }
@@ -303,40 +403,44 @@ const uploadImmagineProfilo =
             );
 
 
-            const blob = await put(
-                pathname,
-                req.file.buffer,
-                {
-                    access: "private",
+            const blob =
+                await put(
 
-                    contentType:
-                        req.file.mimetype,
+                    pathname,
 
-                    allowOverwrite: true
-                }
-            );
+                    req.file.buffer,
+
+                    {
+
+                        access:
+                            "private",
+
+                        contentType:
+                            req.file.mimetype,
+
+                        allowOverwrite:
+                            true
+
+                    }
+
+                );
 
 
             console.log(
-                "Blob creato:",
+                "Blob immagine creato:",
                 blob.pathname
             );
 
 
-            /*
-             * Nel DB salviamo il pathname
-             * del Blob.
-             *
-             * Esempio:
-             *
-             * operatori/12/profilo/primoPiano.jpg
-             */
-
             await operatoreServices
                 .aggiornaImmagineProfiloOperatore(
+
                     tipoImmagine,
+
                     blob.pathname,
+
                     idOperatore
+
                 );
 
 
@@ -363,6 +467,7 @@ const uploadImmagineProfilo =
                 "Errore upload immagine profilo:",
                 error
             );
+
 
             return res
                 .status(500)
@@ -407,8 +512,11 @@ const mostraImmagineProfilo =
             const pathname =
                 await operatoreServices
                     .getImmagineProfiloOperatore(
+
                         idOperatore,
+
                         tipoImmagine
+
                     );
 
 
@@ -427,17 +535,24 @@ const mostraImmagineProfilo =
             }
 
 
-            const result = await get(
-                pathname,
-                {
-                    access: "private",
+            const result =
+                await get(
 
-                    ifNoneMatch:
-                        req.headers[
-                            "if-none-match"
-                        ] || undefined
-                }
-            );
+                    pathname,
+
+                    {
+
+                        access:
+                            "private",
+
+                        ifNoneMatch:
+                            req.headers[
+                                "if-none-match"
+                            ] || undefined
+
+                    }
+
+                );
 
 
             if (!result) {
@@ -451,10 +566,6 @@ const mostraImmagineProfilo =
 
             }
 
-
-            /*
-             * Browser cache
-             */
 
             if (
                 result.statusCode ===
@@ -473,10 +584,12 @@ const mostraImmagineProfilo =
 
                 }
 
+
                 res.setHeader(
                     "Cache-Control",
                     "private, no-cache"
                 );
+
 
                 return res
                     .status(304)
@@ -501,9 +614,12 @@ const mostraImmagineProfilo =
 
 
             res.setHeader(
+
                 "Content-Type",
+
                 result.blob.contentType ||
-                "application/octet-stream"
+                    "application/octet-stream"
+
             );
 
 
@@ -519,7 +635,9 @@ const mostraImmagineProfilo =
             );
 
 
-            if (result.blob.etag) {
+            if (
+                result.blob.etag
+            ) {
 
                 res.setHeader(
                     "ETag",
@@ -529,14 +647,6 @@ const mostraImmagineProfilo =
             }
 
 
-            /*
-             * Vercel Blob restituisce
-             * una Web ReadableStream.
-             *
-             * Express utilizza invece
-             * una Node Readable stream.
-             */
-
             const nodeStream =
                 Readable.fromWeb(
                     result.stream
@@ -544,13 +654,16 @@ const mostraImmagineProfilo =
 
 
             nodeStream.on(
+
                 "error",
+
                 (error) => {
 
                     console.error(
-                        "Errore stream Blob:",
+                        "Errore stream Blob immagine:",
                         error
                     );
+
 
                     if (
                         !res.headersSent
@@ -567,6 +680,7 @@ const mostraImmagineProfilo =
                     }
 
                 }
+
             );
 
 
@@ -582,6 +696,7 @@ const mostraImmagineProfilo =
                 error
             );
 
+
             return res
                 .status(500)
                 .json({
@@ -595,112 +710,20 @@ const mostraImmagineProfilo =
 
 
 // ======================================================
-// ALLEGATI
-// PER ORA RESTANO SU FILESYSTEM
+// ALLEGATI OPERATORE
+// VERCEL BLOB PRIVATE
 // ======================================================
 
 const creaUploadAllegati = () => {
 
-    const storage =
-        multer.diskStorage({
-
-            destination:
-                async (
-                    req,
-                    file,
-                    cb
-                ) => {
-
-                    const {
-                        idOperatore
-                    } = req.params;
-
-
-                    const baseDir =
-                        path.join(
-                            process.env
-                                .HOME_CONTRATTI,
-                            "output",
-                            "allegati"
-                        );
-
-
-                    const operatoreDir =
-                        path.join(
-                            baseDir,
-                            `operatore_${idOperatore}`
-                        );
-
-
-                    if (
-                        !fs.existsSync(
-                            operatoreDir
-                        )
-                    ) {
-
-                        fs.mkdirSync(
-                            operatoreDir,
-                            {
-                                recursive:
-                                    true
-                            }
-                        );
-
-                    }
-
-
-                    cb(
-                        null,
-                        operatoreDir
-                    );
-
-                },
-
-
-            filename:
-                async (
-                    req,
-                    file,
-                    cb
-                ) => {
-
-                    const originalName =
-                        file.originalname;
-
-                    const extension =
-                        path.extname(
-                            originalName
-                        );
-
-                    console.log(
-                        "extension: " +
-                        extension
-                    );
-
-
-                    const newFileName =
-                        `allegato${extension}`;
-
-
-                    cb(
-                        null,
-                        newFileName
-                    );
-
-                }
-
-        });
-
-
     return multer({
 
-        storage,
+        storage:
+            multer.memoryStorage(),
 
         limits: {
             fileSize:
-                10 *
-                1024 *
-                1024
+                4 * 1024 * 1024
         }
 
     });
@@ -713,96 +736,187 @@ const uploadAllegatiMiddleware =
         .single("file");
 
 
+// ======================================================
+// UPLOAD ALLEGATO
+// ======================================================
+
 const uploadAllegati =
     async (req, res) => {
 
-        const {
-            idOperatore
-        } = req.params;
-
-        const {
-            nomeFileAllegato
-        } = req.body;
-
-
-        if (!req.file) {
-
-            return res
-                .status(400)
-                .json({
-                    message:
-                        "File mancante"
-                });
-
-        }
-
-
-        console.log(
-            "req.file.filename uploadContratto: " +
-            req.file.filename
-        );
-
-        console.log(
-            "req.file.path uploadContratto: " +
-            req.file.path
-        );
-
-
-        const oldPath =
-            req.file.path;
-
-        const extension =
-            path.extname(
-                req.file.originalname
-            );
-
-        const newFileName =
-            `${nomeFileAllegato}${extension}`;
-
-        const newPath =
-            path.join(
-                path.dirname(
-                    oldPath
-                ),
-                newFileName
-            );
-
-
-        fs.renameSync(
-            oldPath,
-            newPath
-        );
-
-
-        const esiste =
-            await allegatiOpeartoreServices
-                .verificaPresenzaDatiAllegati(
-                    idOperatore
-                );
-
-
-        if (esiste) {
-
-            await allegatiOpeartoreServices
-                .aggiornaFileAllegati(
-                    nomeFileAllegato,
-                    extension,
-                    idOperatore
-                );
-
-        } else {
-
-            await allegatiOpeartoreServices
-                .inserisciFileAllegati(
-                    nomeFileAllegato,
-                    extension,
-                    idOperatore
-                );
-
-        }
-
-
         try {
+
+            const { idOperatore } =
+                req.params;
+
+            const { nomeFileAllegato } =
+                req.body;
+
+
+            if (!req.file) {
+
+                return res
+                    .status(400)
+                    .json({
+                        message:
+                            "File mancante"
+                    });
+
+            }
+
+
+            if (!nomeFileAllegato) {
+
+                return res
+                    .status(400)
+                    .json({
+                        message:
+                            "Tipo allegato mancante"
+                    });
+
+            }
+
+
+            let extension =
+                path.extname(
+                    req.file.originalname
+                ).toLowerCase();
+
+
+            /*
+             * Se manca l'estensione,
+             * la ricaviamo dal MIME.
+             */
+
+            if (!extension) {
+
+                switch (
+                    req.file.mimetype
+                ) {
+
+                    case "image/jpeg":
+
+                        extension = ".jpg";
+                        break;
+
+
+                    case "image/png":
+
+                        extension = ".png";
+                        break;
+
+
+                    case "image/webp":
+
+                        extension = ".webp";
+                        break;
+
+
+                    case "application/pdf":
+
+                        extension = ".pdf";
+                        break;
+
+
+                    default:
+
+                        extension = "";
+
+                }
+
+            }
+
+
+            const fileName =
+                `${nomeFileAllegato}${extension}`;
+
+
+            const pathname =
+                `operatori/${idOperatore}/allegati/${fileName}`;
+
+
+            console.log(
+                "Upload allegato Blob:",
+                pathname
+            );
+
+
+            const blob =
+                await put(
+
+                    pathname,
+
+                    req.file.buffer,
+
+                    {
+
+                        access:
+                            "private",
+
+                        contentType:
+                            req.file.mimetype,
+
+                        allowOverwrite:
+                            true
+
+                    }
+
+                );
+
+
+            console.log(
+                "Allegato Blob creato:",
+                blob.pathname
+            );
+
+
+            /*
+             * Manteniamo il database compatibile
+             * con il frontend e i service attuali.
+             *
+             * Nel DB continuiamo a salvare:
+             *
+             * carta_identita_img_fronte.jpg
+             *
+             * Il pathname Blob viene ricostruito
+             * quando serve.
+             */
+
+
+            const esiste =
+                await allegatiOpeartoreServices
+                    .verificaPresenzaDatiAllegati(
+                        idOperatore
+                    );
+
+
+            if (esiste) {
+
+                await allegatiOpeartoreServices
+                    .aggiornaFileAllegati(
+
+                        nomeFileAllegato,
+
+                        extension,
+
+                        idOperatore
+
+                    );
+
+            } else {
+
+                await allegatiOpeartoreServices
+                    .inserisciFileAllegati(
+
+                        nomeFileAllegato,
+
+                        extension,
+
+                        idOperatore
+
+                    );
+
+            }
+
 
             return res
                 .status(200)
@@ -813,21 +927,27 @@ const uploadAllegati =
 
                     idOperatore,
 
-                    fileName:
-                        req.file.filename,
+                    fileName,
 
-                    path:
-                        req.file.path
+                    pathname:
+                        blob.pathname
 
                 });
 
+
         } catch (error) {
+
+            console.error(
+                "Errore upload allegato:",
+                error
+            );
+
 
             return res
                 .status(500)
                 .json({
                     message:
-                        "Errore upload contratto"
+                        "Errore upload allegato"
                 });
 
         }
@@ -837,6 +957,7 @@ const uploadAllegati =
 
 // ======================================================
 // DOWNLOAD ALLEGATO
+// VERCEL BLOB PRIVATE
 // ======================================================
 
 const downloadAllegato =
@@ -844,80 +965,177 @@ const downloadAllegato =
 
         try {
 
-            const {
-                idOperatore
-            } = req.params;
+            const { idOperatore } =
+                req.params;
 
-            const {
-                tipoAllegato
-            } = req.query;
+            const { tipoAllegato } =
+                req.query;
 
 
             console.log(
-                "downloadAllegato - idOperatore:",
-                idOperatore
-            );
-
-            console.log(
-                "tipoAllegato: " +
+                "Download allegato:",
+                idOperatore,
                 tipoAllegato
             );
+
+
+            if (!tipoAllegato) {
+
+                return res
+                    .status(400)
+                    .json({
+                        message:
+                            "tipoAllegato mancante"
+                    });
+
+            }
 
 
             const nomeFile =
                 await allegatiOpeartoreServices
                     .ottieniNomeFileAllegato(
+
                         idOperatore,
+
                         tipoAllegato
+
                     );
 
 
-            const baseDir =
-                path.join(
-                    process.env
-                        .HOME_CONTRATTI,
-                    "output",
-                    "allegati"
-                );
+            if (!nomeFile) {
+
+                return res
+                    .status(404)
+                    .json({
+                        message:
+                            "File non trovato"
+                    });
+
+            }
 
 
-            const operatoreDir =
-                path.join(
-                    baseDir,
-                    `operatore_${idOperatore}`
-                );
-
-
-            console.log(
-                "operatoreDir: " +
-                operatoreDir
-            );
-
-
-            const filePathCompleto =
-                path.join(
-                    operatoreDir,
-                    nomeFile
-                );
+            const pathname =
+                `operatori/${idOperatore}/allegati/${nomeFile}`;
 
 
             console.log(
-                "filePathCompleto: " +
-                filePathCompleto
+                "Download allegato Blob:",
+                pathname
             );
 
 
-            return downloadFile(
-                res,
-                filePathCompleto,
-                nomeFile
+            const result =
+                await get(
+
+                    pathname,
+
+                    {
+                        access:
+                            "private"
+                    }
+
+                );
+
+
+            if (
+                !result ||
+                result.statusCode !==
+                    200
+            ) {
+
+                return res
+                    .status(404)
+                    .json({
+                        message:
+                            "File non trovato"
+                    });
+
+            }
+
+
+            res.setHeader(
+
+                "Content-Type",
+
+                result.blob.contentType ||
+                    "application/octet-stream"
+
+            );
+
+
+            /*
+             * Manteniamo attachment perché
+             * il frontend attuale usa questa
+             * route per scaricare il documento.
+             */
+
+            res.setHeader(
+
+                "Content-Disposition",
+
+                `attachment; filename="${nomeFile}"`
+
+            );
+
+
+            res.setHeader(
+                "X-Content-Type-Options",
+                "nosniff"
+            );
+
+
+            res.setHeader(
+                "Cache-Control",
+                "private, no-store"
+            );
+
+
+            const nodeStream =
+                Readable.fromWeb(
+                    result.stream
+                );
+
+
+            nodeStream.on(
+
+                "error",
+
+                (error) => {
+
+                    console.error(
+                        "Errore stream allegato:",
+                        error
+                    );
+
+
+                    if (
+                        !res.headersSent
+                    ) {
+
+                        res
+                            .status(500)
+                            .end();
+
+                    } else {
+
+                        res.end();
+
+                    }
+
+                }
+
+            );
+
+
+            return nodeStream.pipe(
+                res
             );
 
 
         } catch (error) {
 
             console.error(
-                "Errore download contratto firmato:",
+                "Errore download allegato:",
                 error
             );
 
@@ -926,7 +1144,7 @@ const downloadAllegato =
                 .status(500)
                 .json({
                     message:
-                        "Errore download PDF"
+                        "Errore download allegato"
                 });
 
         }
@@ -936,6 +1154,7 @@ const downloadAllegato =
 
 // ======================================================
 // ELIMINA ALLEGATO
+// VERCEL BLOB PRIVATE
 // ======================================================
 
 const eliminaAllegato =
@@ -943,96 +1162,87 @@ const eliminaAllegato =
 
         try {
 
-            const {
-                idOperatore
-            } = req.params;
+            const { idOperatore } =
+                req.params;
 
-            const {
-                tipoAllegato
-            } = req.query;
+            const { tipoAllegato } =
+                req.query;
 
 
             console.log(
-                "eliminaAllegato - idOperatore:",
-                idOperatore
-            );
-
-            console.log(
-                "tipoAllegato: " +
+                "Elimina allegato:",
+                idOperatore,
                 tipoAllegato
             );
 
 
-            const nomeFile =
-                await allegatiOpeartoreServices
-                    .ottieniNomeFileAllegato(
-                        idOperatore,
-                        tipoAllegato
-                    );
-
-
-            const baseDir =
-                path.join(
-                    process.env
-                        .HOME_CONTRATTI,
-                    "output",
-                    "allegati"
-                );
-
-
-            const operatoreDir =
-                path.join(
-                    baseDir,
-                    `operatore_${idOperatore}`
-                );
-
-
-            console.log(
-                "operatoreDir: " +
-                operatoreDir
-            );
-
-
-            const filePathCompleto =
-                path.join(
-                    operatoreDir,
-                    nomeFile
-                );
-
-
-            console.log(
-                "filePathCompleto: " +
-                filePathCompleto
-            );
-
-
-            try {
-
-                await fsPromises.access(
-                    filePathCompleto
-                );
-
-            } catch {
+            if (!tipoAllegato) {
 
                 return res
-                    .status(404)
+                    .status(400)
                     .json({
                         message:
-                            "File non esistente"
+                            "tipoAllegato mancante"
                     });
 
             }
 
 
-            await fsPromises.unlink(
-                filePathCompleto
+            const nomeFile =
+                await allegatiOpeartoreServices
+                    .ottieniNomeFileAllegato(
+
+                        idOperatore,
+
+                        tipoAllegato
+
+                    );
+
+
+            if (!nomeFile) {
+
+                return res
+                    .status(404)
+                    .json({
+                        message:
+                            "File non trovato"
+                    });
+
+            }
+
+
+            const pathname =
+                `operatori/${idOperatore}/allegati/${nomeFile}`;
+
+
+            console.log(
+                "Eliminazione Blob:",
+                pathname
             );
 
 
+            /*
+             * Prima eliminiamo il file
+             * dallo storage.
+             */
+
+            await del(
+                pathname
+            );
+
+
+            /*
+             * Poi azzeriamo la relativa
+             * colonna nel DB.
+             */
+
             await allegatiOpeartoreServices
                 .eliminaFileAllegato(
+
                     idOperatore,
+
                     tipoAllegato
+
                 );
 
 
@@ -1047,7 +1257,7 @@ const eliminaAllegato =
         } catch (error) {
 
             console.error(
-                "Errore eliminazione documento:",
+                "Errore eliminazione allegato:",
                 error
             );
 
@@ -1060,91 +1270,6 @@ const eliminaAllegato =
                 });
 
         }
-
-    };
-
-
-// ======================================================
-// DOWNLOAD FILE LOCALE
-// ======================================================
-
-const downloadFile =
-    async (
-        res,
-        filePath,
-        nomeFile
-    ) => {
-
-        if (!filePath) {
-
-            return res
-                .status(404)
-                .json({
-                    message:
-                        "File non trovato"
-                });
-
-        }
-
-
-        const resolvedPath =
-            path.resolve(
-                filePath
-            );
-
-
-        console.log(
-            "REAL PATH:",
-            resolvedPath
-        );
-
-
-        if (
-            !fs.existsSync(
-                resolvedPath
-            )
-        ) {
-
-            return res
-                .status(404)
-                .json({
-                    message:
-                        "File non trovato"
-                });
-
-        }
-
-
-        return res.download(
-            resolvedPath,
-            nomeFile,
-            (err) => {
-
-                if (err) {
-
-                    console.error(
-                        "Errore durante il download:",
-                        err
-                    );
-
-
-                    if (
-                        !res.headersSent
-                    ) {
-
-                        return res
-                            .status(500)
-                            .json({
-                                message:
-                                    "Errore durante il download del file"
-                            });
-
-                    }
-
-                }
-
-            }
-        );
 
     };
 
@@ -1164,7 +1289,6 @@ module.exports = {
 
     uploadAllegatiMiddleware,
     uploadAllegati,
-
     downloadAllegato,
     eliminaAllegato
 
