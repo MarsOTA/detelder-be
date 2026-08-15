@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const operatoriController = require('../../controllers/operatoriController');
+const contractPdfController = require('../../controllers/contractPdfController');
 
 router.route('/')
     .get(operatoriController.getOperatori)
@@ -65,7 +66,7 @@ router.route('/generate-pdf')
     .post(operatoriController.generaPdf);
 
 router.route('/creaContratto')
-    .post(operatoriController.creaContratto);
+    .post(contractPdfController.creaContratto);
 
 router.route('/listaContrattiOperatore/:idOperatore')
     .get(operatoriController.listaContrattiOperatore);
