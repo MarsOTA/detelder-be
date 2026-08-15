@@ -16,6 +16,7 @@
     "nodemon": "^3.1.10"
   },
   "dependencies": {
+    "@sparticuz/chromium": "141.0.0",
     "@vercel/blob": "^2.3.0",
     "bcrypt": "^6.0.0",
     "body-parser": "^2.2.0",
@@ -32,6 +33,7 @@
     "mysql2": "^3.14.1",
     "nodemailer": "^7.0.3",
     "puppeteer": "^24.29.1",
+    "puppeteer-core": "24.26.1",
     "twilio": "^5.9.0"
   }
 }
