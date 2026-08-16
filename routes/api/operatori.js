@@ -3,6 +3,7 @@ const router = express.Router();
 const operatoriController = require('../../controllers/operatoriController');
 const contractPdfController = require('../../controllers/contractPdfController');
 const contrattiManualiController = require('../../controllers/contrattiManualiController');
+const statoContrattiController = require('../../controllers/statoContrattiController');
 
 router.route('/')
     .get(operatoriController.getOperatori)
@@ -31,9 +32,11 @@ router.route('/recuperoTimbratura')
 router.route('/eliminaTimbratura/:idTimbratura')
     .delete(operatoriController.concellaTimbratura);
 
-
 router.route('/statoCheck/:idOperatore')
     .get(operatoriController.getStatoCheck);
+
+router.route('/statoContratti')
+    .get(statoContrattiController.getStatoContrattiOperatori);
 
 router.route('/:id')
     .get(operatoriController.ottieniOperatore)
@@ -83,6 +86,5 @@ router.route('/cancellaSingoloContratto/:idContratto')
 
 router.route('/downloadContratto/:idContratto')
     .get(operatoriController.downloadContratto);
-
 
 module.exports = router;
