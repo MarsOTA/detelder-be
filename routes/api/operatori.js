@@ -4,6 +4,7 @@ const operatoriController = require('../../controllers/operatoriController');
 const contractPdfController = require('../../controllers/contractPdfController');
 const contrattiManualiController = require('../../controllers/contrattiManualiController');
 const statoContrattiController = require('../../controllers/statoContrattiController');
+const attestatiListaController = require('../../controllers/attestatiListaController');
 
 router.route('/')
     .get(operatoriController.getOperatori)
@@ -37,6 +38,9 @@ router.route('/statoCheck/:idOperatore')
 
 router.route('/statoContratti')
     .get(statoContrattiController.getStatoContrattiOperatori);
+
+router.route('/attestati')
+    .get(attestatiListaController.getAttestatiOperatori);
 
 router.route('/:id')
     .get(operatoriController.ottieniOperatore)
