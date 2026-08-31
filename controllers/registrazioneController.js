@@ -29,29 +29,19 @@ const login = async (req, res) => {
             return res.status(401).json({ success: false, message: 'Password errata' });
         }
 
-        
-
         req.session.user = {
             idOperatore: dipendente.id,
-            ruolo: dipendente.ruolo            
+            ruolo: dipendente.ruolo
         };
 
         console.log("req.session.token***********: ", req.session.token);
 
-
-
-        // create JWTs
-        //5 giorni prima che scade, ma comunque viene gestita dalla sessione di durata di 30 minuti che si rinnova 
-        //ad ogni navigazione. Si ipotizza che un client navighi meno di 5 giorni consecutivi.
-        
         const accessToken = jwt.sign(
             { username: username },
             process.env.ACCESS_TOKEN_SECRET,
             { expiresIn: '5d' }
         );
-        
 
-        //const accessToken = req.session.token;
         req.session.token = accessToken;
 
         console.log("Salvataggio sessione per: " + username);
@@ -76,42 +66,47 @@ const logout = async (req, res) => {
 const checkAuth = async (req, res) => {
     console.log("controllo checkAuth");
 
-    //Qui si controlla se il token di sessione non è scaduto(durata 30 minuti)
-    const token = req.session.token;
-    console.log("token****: " + token);
-    if (!token) return res.status(401).json({ message: 'Not authenticated' });
+    const authHeader = req.headers.authorization || req.headers.Authorization;
+    let token = null;
 
-
-    //Qui si controlla che l'access token creato in fase di login sia ancora valido (durata 5 giorni)
-    // e sia proprio dell'utente che si logga decoded.username
-    /*
-    jwt.verify(
-        token,
-        process.env.ACCESS_TOKEN_SECRET,
-        (err, decoded) => {
-            if (err) return res.sendStatus(403); //invalid token
-            req.user = decoded.username;
-            next();
-        }
-    );
-    console.log("req.user: " + req.user);
-    */
-
-
-    //Se il token di sessione è valido allora si riazzera la scadenza (30 minuti)
-    const isTokenTrue = !!req.session.token;
-    console.log("token di sessione è ancora valido: ", isTokenTrue);
-    if (isTokenTrue) {
-        req.session._garbage = Date();
-        req.session.touch();
+    if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
+        token = authHeader.slice(7);
     }
 
-    return res.status(201).json({
-        ok: isTokenTrue,
-        // role: req.user.role, // 'user' o 'admin'
-        role: 'ADMIN', // 'user' o 'admin'
-    });
+    if (!token) {
+        token = req.session?.token;
+    }
 
+    console.log("token presente: ", !!token);
+
+    if (!token) {
+        return res.status(401).json({ ok: false, message: 'Not authenticated' });
+    }
+
+    try {
+        const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+        const sessione = await sessioneService.ottieniSessioneByAccessToken(token);
+
+        if (!sessione) {
+            console.log("Nessuna sessione trovata nel DB!");
+            return res.status(401).json({ ok: false, message: 'Session expired' });
+        }
+
+        await sessioneService.aggiornaScadenzaSessione(sessione.idSessione);
+
+        if (req.session?.token) {
+            req.session._garbage = Date();
+            req.session.touch();
+        }
+
+        return res.status(200).json({
+            ok: true,
+            username: decoded.username
+        });
+    } catch (error) {
+        console.error("Token non valido in checkAuth:", error.message);
+        return res.status(401).json({ ok: false, message: 'Invalid token' });
+    }
 }
 
 module.exports = {
