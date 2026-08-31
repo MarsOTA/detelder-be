@@ -17,5 +17,7 @@ router.route('/rendicontazione/:idOperatore')
 router.route('/aggiornaRendicontazione/:idPayroll')
     .patch(payrollController.aggiornaRendicontazione);
 
-module.exports = router;
+router.route('/approvaRendicontazione/:idPayroll')
+    .patch(payrollController.approvaRendicontazione);
 
+module.exports = router;
