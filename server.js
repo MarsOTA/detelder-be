@@ -7,6 +7,10 @@ const path = require('path');
 
 require('dotenv-flow').config();
 
+// Keep all application and MySQL DATETIME handling aligned with the business
+// timezone. Vercel runtimes default to UTC; Europe/Rome also follows DST.
+process.env.TZ = process.env.TZ || 'Europe/Rome';
+
 const verifyJWT = require('./middleware/verifyJWT');
 const db = require('./db');
 
