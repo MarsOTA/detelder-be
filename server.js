@@ -76,8 +76,28 @@ if (!process.env.CORS_ORIGIN) {
     console.warn('ATTENZIONE: CORS_ORIGIN non configurato');
 }
 
+// CORS_ORIGIN può contenere una o più origin separate da virgola.
+// Manteniamo inoltre autorizzati i due frontend Detelder di test
+// così il nuovo operator preview non rompe il frontend ruby esistente.
+const allowedOrigins = [
+    ...(process.env.CORS_ORIGIN || '')
+        .split(',')
+        .map((origin) => origin.trim())
+        .filter(Boolean),
+    'https://detelder-fe-ruby.vercel.app',
+    'https://detelder-operator-preview.vercel.app'
+].filter((origin, index, origins) => origins.indexOf(origin) === index);
+
 app.use(cors({
-    origin: process.env.CORS_ORIGIN,
+    origin: (origin, callback) => {
+        // Richieste server-to-server / curl possono non avere Origin.
+        if (!origin || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+
+        console.warn(`CORS bloccato per origin: ${origin}`);
+        return callback(new Error('Origin non autorizzata da CORS'));
+    },
     credentials: true
 }));
 
