@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const db = require('../../db');
 const operatoriController = require('../../controllers/operatoriController');
 const contractPdfController = require('../../controllers/contractPdfController');
 const contrattiManualiController = require('../../controllers/contrattiManualiController');
@@ -9,6 +10,27 @@ const attestatiListaController = require('../../controllers/attestatiListaContro
 router.route('/')
     .get(operatoriController.getOperatori)
     .post(operatoriController.creaNuovoOperatore);
+
+router.get('/comboOperatori', async (req, res, next) => {
+    try {
+        const [records] = await db.query(`
+            SELECT DISTINCT
+                CASE
+                    WHEN nickname IS NOT NULL AND TRIM(nickname) <> ''
+                        THEN nickname
+                    ELSE CONCAT(nome, ' ', cognome)
+                END AS operatore
+            FROM dipendenti
+            WHERE ruolo = 'OPERATORE'
+              AND stato = 'ATTIVO'
+            ORDER BY operatore ASC
+        `);
+
+        return res.send(records);
+    } catch (error) {
+        return next(error);
+    }
+});
 
 router.route('/ricercaDipendenti')
     .get(operatoriController.ricercaDipendenti);
