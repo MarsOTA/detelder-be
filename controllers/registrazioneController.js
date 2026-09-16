@@ -1,5 +1,6 @@
 const operatoreServices = require('../services/operatoreServices');
 const sessioneService = require('../services/sessioniServices');
+const db = require('../db');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
@@ -13,7 +14,21 @@ const login = async (req, res) => {
     }
 
     try {
-        const dipendente = await operatoreServices.ottieniDipendenteByUsername(username);
+        let dipendente = await operatoreServices.ottieniDipendenteByUsername(username);
+
+        // Compatibilita con il login storico via telefono, ma consente anche
+        // email e campo username senza rompere gli accessi esistenti.
+        if (!dipendente) {
+            const [[record]] = await db.query(
+                `SELECT *
+                 FROM dipendenti
+                 WHERE email = ? OR username = ?
+                 LIMIT 1`,
+                [username, username]
+            );
+            dipendente = record;
+        }
+
         console.log(dipendente);
 
         if (!dipendente) {
