@@ -85,7 +85,8 @@ const allowedOrigins = [
         .map((origin) => origin.trim())
         .filter(Boolean),
     'https://detelder-fe-ruby.vercel.app',
-    'https://detelder-operator-preview.vercel.app'
+    'https://detelder-operator-preview.vercel.app',
+    'https://detelder-hr-test.vercel.app'
 ].filter((origin, index, origins) => origins.indexOf(origin) === index);
 
 app.use(cors({
