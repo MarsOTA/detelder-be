@@ -99,6 +99,7 @@ module.exports.ottieniListaTurni = async (dataInizio, dataFine, keyword) => {
     let sql = `
         SELECT 
             toper.idTurno,
+            toper.idOperatore,
             toper.idCheckInCheckOut,
             toper.dataTurno,
             toper.oraInizio,
