@@ -6,7 +6,7 @@ const router = express.Router();
 // Si inizializza esclusivamente nel database Aiven collegato al backend di test.
 let ready;
 async function ensureTable() {
-  if (!/(?:^|\\.)aivencloud\\.com$/i.test(process.env.DB_HOST || '')) {
+  if (!(process.env.DB_HOST || '').toLowerCase().endsWith('.aivencloud.com')) {
     throw new Error('Archivio chiamate abilitato soltanto sul database Aiven di test.');
   }
   if (!ready) {
