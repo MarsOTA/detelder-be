@@ -46,10 +46,19 @@ async function resolve(req,res,next){
   if(!token)return res.status(401).json({message:'Accesso non autenticato'});
   const [[sessione]]=await db.query('SELECT * FROM sessione WHERE sessione=? LIMIT 1',[token]);
   if(!sessione)return res.status(401).json({message:'Sessione scaduta'});
-  const id=Number(sessione.idDipendente||sessione.idOperatore);
-  if(!Number.isSafeInteger(id)||id<=0)return res.status(403).json({message:'Sessione priva di utente riconoscibile'});
-  const [[dip]]=await db.query('SELECT id,ruolo FROM dipendenti WHERE id=? LIMIT 1',[id]);
-  if(!dip)return res.status(403).json({message:'Utente non trovato'});
+  let id=Number(sessione.idDipendente||sessione.idOperatore);
+  let dip=null;
+  if(Number.isSafeInteger(id)&&id>0){
+    [[dip]]=await db.query('SELECT id,ruolo FROM dipendenti WHERE id=? LIMIT 1',[id]);
+  }
+  if(!dip){
+    // Older sessions may use a different FK column. Fall back to the verified JWT username.
+    const login=String(req.user||'');
+    if(!login)return res.status(403).json({message:'Sessione priva di identità verificabile'});
+    [[dip]]=await db.query('SELECT id,ruolo FROM dipendenti WHERE username=? OR email=? OR telefono=? LIMIT 1',[login,login,login]);
+    if(!dip)return res.status(403).json({message:'Utente non trovato'});
+    id=dip.id;
+  }
   const [[row]]=await db.query('SELECT ruolo FROM hr_ruoli_assegnati WHERE idOperatore=?',[id]);
   // Preserve existing admin access; explicit HR role overrides only in module HR.
   const role=row?.ruolo || (dip.ruolo==='ADMIN'?'ADMIN':null);
