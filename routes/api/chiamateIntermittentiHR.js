@@ -43,8 +43,10 @@ async function ensureEmployerTable() {
 router.get('/config/datore',async(req,res,next)=>{
  try {
    await ensureEmployerTable();
+   // Dati DETELDER forniti dall'amministratore: inizializza solo se nessuna configurazione esiste.
+   await db.query("INSERT IGNORE INTO configurazione_datore_intermit_hr (id,codiceFiscale,email) VALUES (1,?,?)",["13066390967","info@detelder.com"]);
    const [rows]=await db.query("SELECT codiceFiscale,email FROM configurazione_datore_intermit_hr WHERE id=1");
-   res.json(rows[0]||{codiceFiscale:"",email:""});
+   res.json(rows[0]||{codiceFiscale:"13066390967",email:"info@detelder.com"});
  }catch(e){next(e);}
 });
 router.put('/config/datore',async(req,res,next)=>{
