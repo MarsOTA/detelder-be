@@ -30,6 +30,33 @@ async function ensureTable() {
   }
   await ready;
 }
+
+async function ensureEmployerTable() {
+  if (!(process.env.DB_HOST || '').toLowerCase().endsWith('.aivencloud.com')) throw new Error('Configurazione datore disponibile solo su Aiven');
+  await db.query(`CREATE TABLE IF NOT EXISTS configurazione_datore_intermit_hr (
+    id TINYINT UNSIGNED PRIMARY KEY,
+    codiceFiscale VARCHAR(16) NOT NULL DEFAULT '',
+    email VARCHAR(255) NOT NULL DEFAULT '',
+    aggiornatoIl TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+}
+router.get('/config/datore',async(req,res,next)=>{
+ try {
+   await ensureEmployerTable();
+   const [rows]=await db.query("SELECT codiceFiscale,email FROM configurazione_datore_intermit_hr WHERE id=1");
+   res.json(rows[0]||{codiceFiscale:"",email:""});
+ }catch(e){next(e);}
+});
+router.put('/config/datore',async(req,res,next)=>{
+ try{
+  const cf=String(req.body?.codiceFiscale||"").trim().toUpperCase();
+  const email=String(req.body?.email||"").trim();
+  if(!/^[A-Z0-9]{11,16}$/.test(cf)|| !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email))return res.status(400).json({message:'Inserisci codice fiscale/P.IVA ed email validi'});
+  await ensureEmployerTable();
+  await db.query("INSERT INTO configurazione_datore_intermit_hr (id,codiceFiscale,email) VALUES (1,?,?) ON DUPLICATE KEY UPDATE codiceFiscale=VALUES(codiceFiscale),email=VALUES(email)",[cf,email]);
+  res.json({codiceFiscale:cf,email});
+ }catch(e){next(e);}
+});
 const valido = n => Number.isSafeInteger(Number(n)) && Number(n) > 0;
 async function trovaPadre(idContratto, idOperatore) {
   const [rows] = await db.query(
@@ -38,7 +65,7 @@ async function trovaPadre(idContratto, idOperatore) {
   );
   return rows[0];
 }
-function validDate(date) { return typeof date === 'string' && /^\\d{4}-\\d{2}-\\d{2}$/.test(date) && !Number.isNaN(Date.parse(date+'T12:00:00Z')); }
+function validDate(date) { return typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date) && !Number.isNaN(Date.parse(date+'T12:00:00Z')); }
 const list = async(req,res,next) => {
   try {
     const {idContratto,idOperatore}=req.params;
