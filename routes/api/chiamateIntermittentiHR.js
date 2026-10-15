@@ -51,7 +51,7 @@ router.put('/config/datore',async(req,res,next)=>{
  try{
   const cf=String(req.body?.codiceFiscale||"").trim().toUpperCase();
   const email=String(req.body?.email||"").trim();
-  if(!/^[A-Z0-9]{11,16}$/.test(cf)|| !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email))return res.status(400).json({message:'Inserisci codice fiscale/P.IVA ed email validi'});
+  if(!/^[A-Z0-9]{11,16}$/.test(cf)|| !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return res.status(400).json({message:'Inserisci codice fiscale/P.IVA ed email validi'});
   await ensureEmployerTable();
   await db.query("INSERT INTO configurazione_datore_intermit_hr (id,codiceFiscale,email) VALUES (1,?,?) ON DUPLICATE KEY UPDATE codiceFiscale=VALUES(codiceFiscale),email=VALUES(email)",[cf,email]);
   res.json({codiceFiscale:cf,email});
