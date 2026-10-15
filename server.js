@@ -177,6 +177,7 @@ app.use('/clienti', ...apiParser);
 app.use('/eventi', ...apiParser);
 app.use('/operatori', ...apiParser);
 app.use('/chiamate-hr', ...apiParser);
+app.use('/hr-workflow', ...apiParser);
 app.use('/payroll', ...apiParser);
 
 
@@ -201,6 +202,7 @@ app.use(
 );
 
 app.use('/chiamate-hr', verifyJWT, require('./routes/api/chiamateIntermittentiHR'));
+app.use('/hr-workflow', verifyJWT, require('./routes/api/hrWorkflow'));
 
 
 app.use(
