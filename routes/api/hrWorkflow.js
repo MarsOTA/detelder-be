@@ -51,7 +51,7 @@ router.patch('/pratiche/:id/stato',allow('HR'),async(req,res,next)=>{let conn;tr
 router.get('/utenti',allow('ADMIN'),async(req,res,next)=>{try{
  const [rows]=await db.query(`SELECT d.id,d.nome,d.cognome,d.email,d.ruolo AS ruoloPrincipale,
  COALESCE(h.ruolo,CASE WHEN d.ruolo='ADMIN' THEN 'ADMIN' END) AS ruoloHR
- FROM dipendenti d LEFT JOIN hr_ruoli_assegnati h ON h.idOperatore=d.id WHERE d.ruolo='ADMIN' OR h.idOperatore IS NOT NULL ORDER BY d.cognome`);
+ FROM dipendenti d LEFT JOIN hr_ruoli_assegnati h ON h.idOperatore=d.id ORDER BY d.cognome`);
  res.json(rows);
 }catch(e){next(e)}});
 router.put('/utenti/:id/ruolo',allow('ADMIN'),async(req,res,next)=>{try{
