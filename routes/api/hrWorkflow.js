@@ -37,6 +37,21 @@ router.post('/pratiche',allow('ADMIN'),async(req,res,next)=>{let conn;try{
  [record.insertId,req.hrIdentity.id,'DA_ELABORARE','Assegnata da ADMIN']);
  await conn.commit();res.status(201).json({id:record.insertId,stato:'DA_ELABORARE'});
 }catch(e){if(conn)await conn.rollback();next(e)}finally{if(conn)conn.release()}});
+router.post('/pratiche/:id/attivita',allow('HR'),async(req,res,next)=>{try{
+ const azione=String(req.body?.azione||''),contrattoId=Number(req.body?.contrattoId);
+ const descrizioni={CONTRATTO_CREATO:'Contratto registrato',CONTRATTO_FIRMATO_CARICATO:'Contratto firmato caricato',UNILAV_CARICATO:'UNILAV caricata'};
+ if(!Object.prototype.hasOwnProperty.call(descrizioni,azione)||!Number.isSafeInteger(contrattoId)||contrattoId<=0)
+  return res.status(400).json({message:'Attività o identificativo documento non validi'});
+ const [[p]]=await db.query('SELECT id,idOperatore,stato FROM hr_pratiche WHERE id=? LIMIT 1',[req.params.id]);
+ if(!p)return res.status(404).json({message:'Pratica non trovata'});
+ const [[c]]=await db.query('SELECT idContratto,idOperatore,tipologia,pathContrattoFirmato,pathContrattoUnilav FROM contratto WHERE idContratto=? AND idOperatore=? LIMIT 1',[contrattoId,p.idOperatore]);
+ if(!c)return res.status(404).json({message:'Contratto non trovato per questo operatore'});
+ if(azione==='CONTRATTO_FIRMATO_CARICATO'&&!c.pathContrattoFirmato)return res.status(409).json({message:'Contratto firmato non rilevato nel database'});
+ if(azione==='UNILAV_CARICATO'&&!c.pathContrattoUnilav)return res.status(409).json({message:'Documento UNILAV non rilevato nel database'});
+ await db.query('INSERT INTO hr_pratiche_log (praticaId,attoreId,statoPrima,statoDopo,dettaglio) VALUES (?,?,?,?,?)',
+ [p.id,req.hrIdentity.id,p.stato,p.stato,descrizioni[azione]+' · Contratto #'+contrattoId]);
+ res.status(201).json({registrato:true});
+}catch(e){next(e)}});
 router.patch('/pratiche/:id/periodo',allow('HR'),async(req,res,next)=>{let conn;try{
  const {dataInizio,dataFine}=req.body||{};
  if(typeof dataInizio!=='string'||!dateOk(dataInizio)||!dataInizio||
