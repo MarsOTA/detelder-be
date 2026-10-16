@@ -37,6 +37,34 @@ router.post('/pratiche',allow('ADMIN'),async(req,res,next)=>{let conn;try{
  [record.insertId,req.hrIdentity.id,'DA_ELABORARE','Assegnata da ADMIN']);
  await conn.commit();res.status(201).json({id:record.insertId,stato:'DA_ELABORARE'});
 }catch(e){if(conn)await conn.rollback();next(e)}finally{if(conn)conn.release()}});
+// Codice di comunicazione della pratica: un solo valore riutilizzato dalle chiamate.
+async function ensureCodici(){
+ if(!(process.env.DB_HOST||'').toLowerCase().endsWith('.aivencloud.com'))throw new Error('Codici HR consentiti solo su Aiven test');
+ await db.query(`CREATE TABLE IF NOT EXISTS hr_codici_comunicazione (
+   praticaId BIGINT NOT NULL PRIMARY KEY,
+   codice VARCHAR(80) NOT NULL DEFAULT '',
+   aggiornatoDa BIGINT NULL,
+   aggiornatoIl TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+ ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+}
+router.get('/pratiche/:id/codice-comunicazione',async(req,res,next)=>{try{
+ const [[p]]=await db.query('SELECT id FROM hr_pratiche WHERE id=?',[req.params.id]);
+ if(!p)return res.status(404).json({message:'Pratica non trovata'});
+ await ensureCodici();
+ const [[row]]=await db.query('SELECT codice FROM hr_codici_comunicazione WHERE praticaId=?',[p.id]);
+ res.json({codice:row?.codice||''});
+}catch(e){next(e)}});
+router.put('/pratiche/:id/codice-comunicazione',allow('HR'),async(req,res,next)=>{try{
+ const codice=String(req.body?.codice||'').trim().toUpperCase();
+ if(codice.length>80||! /^[A-Z0-9._\\/-]*$/.test(codice))return res.status(400).json({message:'Codice comunicazione non valido'});
+ const [[p]]=await db.query('SELECT id,stato FROM hr_pratiche WHERE id=?',[req.params.id]);
+ if(!p)return res.status(404).json({message:'Pratica non trovata'});
+ if(p.stato==='COMPLETATO')return res.status(409).json({message:'Pratica già completata'});
+ await ensureCodici();
+ await db.query('INSERT INTO hr_codici_comunicazione (praticaId,codice,aggiornatoDa) VALUES (?,?,?) ON DUPLICATE KEY UPDATE codice=VALUES(codice),aggiornatoDa=VALUES(aggiornatoDa)',[p.id,codice,req.hrIdentity.id]);
+ await db.query('INSERT INTO hr_pratiche_log (praticaId,attoreId,statoPrima,statoDopo,dettaglio) VALUES (?,?,?,?,?)',[p.id,req.hrIdentity.id,p.stato,p.stato,codice?'Codice comunicazione registrato/aggiornato':'Codice comunicazione svuotato']);
+ res.json({codice});
+}catch(e){next(e)}});
 router.post('/pratiche/:id/attivita',allow('HR'),async(req,res,next)=>{try{
  const azione=String(req.body?.azione||''),contrattoId=Number(req.body?.contrattoId);
  const descrizioni={CONTRATTO_CREATO:'Contratto registrato',CONTRATTO_FIRMATO_CARICATO:'Contratto firmato caricato',UNILAV_CARICATO:'UNILAV caricata'};
