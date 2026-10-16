@@ -33,6 +33,22 @@ router.post('/pratiche',allow('ADMIN'),async(req,res,next)=>{let conn;try{
  [record.insertId,req.hrIdentity.id,'DA_ELABORARE','Assegnata da ADMIN']);
  await conn.commit();res.status(201).json({id:record.insertId,stato:'DA_ELABORARE'});
 }catch(e){if(conn)await conn.rollback();next(e)}finally{if(conn)conn.release()}});
+router.patch('/pratiche/:id/periodo',allow('HR'),async(req,res,next)=>{let conn;try{
+ const {dataInizio,dataFine}=req.body||{};
+ if(typeof dataInizio!=='string'||!dateOk(dataInizio)||!dataInizio||
+    !(dataFine===null||(typeof dataFine==='string'&&dateOk(dataFine)))||
+    (dataFine&&dataFine<dataInizio))
+  return res.status(400).json({message:'Periodo contrattuale non valido'});
+ conn=await db.getConnection();await conn.beginTransaction();
+ const [[p]]=await conn.query('SELECT id,stato,dataInizio,dataFine FROM hr_pratiche WHERE id=? FOR UPDATE',[req.params.id]);
+ if(!p){await conn.rollback();return res.status(404).json({message:'Pratica non trovata'})}
+ if(p.stato==='COMPLETATO'){await conn.rollback();return res.status(409).json({message:'Pratica completata: periodo non modificabile'})}
+ await conn.query('UPDATE hr_pratiche SET dataInizio=?,dataFine=? WHERE id=?',[dataInizio,dataFine||null,p.id]);
+ const before=[p.dataInizio,p.dataFine].map(v=>v instanceof Date?v.toISOString().slice(0,10):v||'—').join(' / ');
+ await conn.query('INSERT INTO hr_pratiche_log (praticaId,attoreId,statoPrima,statoDopo,dettaglio) VALUES (?,?,?,?,?)',
+ [p.id,req.hrIdentity.id,p.stato,p.stato,'Periodo aggiornato da '+before+' a '+dataInizio+' / '+(dataFine||'—')]);
+ await conn.commit();res.json({id:p.id,dataInizio,dataFine:dataFine||null});
+}catch(e){if(conn)await conn.rollback();next(e)}finally{if(conn)conn.release()}});
 router.patch('/pratiche/:id/stato',allow('HR'),async(req,res,next)=>{let conn;try{
  const stato=req.body?.stato,note=String(req.body?.note||'');
  if(!states.includes(stato)||note.length>2000)return res.status(400).json({message:'Stato o nota non validi'});
