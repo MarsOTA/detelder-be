@@ -3,7 +3,7 @@ const db=require('../../db');
 const {resolve,allow}=require('../../middleware/hrAccess');
 const router=express.Router();
 router.use(resolve);
-const types=['CHIAMATA','TEMPO_DETERMINATO','TEMPO_INDETERMINATO','OCCASIONALE','FATTURA'];
+const types=['CHIAMATA','TEMPO_DETERMINATO','TEMPO_INDETERMINATO','OCCASIONALE','CONSGNA_BENI_FORMAZIONE','FATTURA'];
 const employers=['DETELDER','SOCIETA_APPALTO','AUTONOMO_PIVA'];
 const states=['DA_ELABORARE','IN_LAVORAZIONE','DOCUMENTI_MANCANTI','COMPLETATO'];
 const dateOk=v=>!v||(/^\d{4}-\d{2}-\d{2}$/.test(v)&&!Number.isNaN(Date.parse(v+'T12:00:00Z')));
