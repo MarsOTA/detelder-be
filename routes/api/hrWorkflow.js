@@ -9,15 +9,19 @@ const states=['DA_ELABORARE','IN_LAVORAZIONE','DOCUMENTI_MANCANTI','COMPLETATO']
 const dateOk=v=>!v||(/^\d{4}-\d{2}-\d{2}$/.test(v)&&!Number.isNaN(Date.parse(v+'T12:00:00Z')));
 const shape=(r)=>({id:r.id,idOperatore:r.idOperatore,nome:r.nome,cognome:r.cognome,
  tipologia:r.tipologia,datore:r.datore,dataInizio:r.dataInizio,dataFine:r.dataFine,
- stato:r.stato,note:r.note,assegnatoDa:r.assegnatoDa,presoInCaricoDa:r.presoInCaricoDa,creatoIl:r.creatoIl});
-const query=`SELECT p.*,d.nome,d.cognome FROM hr_pratiche p LEFT JOIN dipendenti d ON d.id=p.idOperatore`;
+ stato:r.stato,note:r.note,assegnatoDa:r.assegnatoDa,presoInCaricoDa:r.presoInCaricoDa,assegnatoDaNome:r.assegnatoDaNome,assegnatoDaCognome:r.assegnatoDaCognome,presoInCaricoDaNome:r.presoInCaricoDaNome,presoInCaricoDaCognome:r.presoInCaricoDaCognome,creatoIl:r.creatoIl,aggiornatoIl:r.aggiornatoIl});
+const query=`SELECT p.*,d.nome,d.cognome,assegnatore.nome AS assegnatoDaNome,assegnatore.cognome AS assegnatoDaCognome,incaricato.nome AS presoInCaricoDaNome,incaricato.cognome AS presoInCaricoDaCognome FROM hr_pratiche p LEFT JOIN dipendenti d ON d.id=p.idOperatore LEFT JOIN dipendenti assegnatore ON assegnatore.id=p.assegnatoDa LEFT JOIN dipendenti incaricato ON incaricato.id=p.presoInCaricoDa`;
 router.get('/me',(req,res)=>res.json({id:req.hrIdentity.id,role:req.hrIdentity.role}));
 router.get('/pratiche',async(req,res,next)=>{try{
  const [rows]=await db.query(query+' ORDER BY CASE p.stato WHEN \'DA_ELABORARE\' THEN 0 WHEN \'IN_LAVORAZIONE\' THEN 1 WHEN \'DOCUMENTI_MANCANTI\' THEN 2 ELSE 3 END,p.creatoIl DESC');
  res.json(rows.map(shape));
 }catch(e){next(e)}});
 router.get('/pratiche/:id/log',async(req,res,next)=>{try{
- const [rows]=await db.query('SELECT * FROM hr_pratiche_log WHERE praticaId=? ORDER BY id DESC',[req.params.id]);res.json(rows);
+ const [[pratica]]=await db.query('SELECT id FROM hr_pratiche WHERE id=?',[req.params.id]);
+ if(!pratica)return res.status(404).json({message:'Pratica non trovata'});
+ const [rows]=await db.query(`SELECT l.*,d.nome AS attoreNome,d.cognome AS attoreCognome FROM hr_pratiche_log l
+ LEFT JOIN dipendenti d ON d.id=l.attoreId WHERE l.praticaId=? ORDER BY l.id DESC`,[pratica.id]);
+ res.json(rows);
 }catch(e){next(e)}});
 router.post('/pratiche',allow('ADMIN'),async(req,res,next)=>{let conn;try{
  const {idOperatore,tipologia,datore,dataInizio=null,dataFine=null,note=''}=req.body||{};
@@ -52,6 +56,7 @@ router.patch('/pratiche/:id/periodo',allow('HR'),async(req,res,next)=>{let conn;
 router.patch('/pratiche/:id/stato',allow('HR'),async(req,res,next)=>{let conn;try{
  const stato=req.body?.stato,note=String(req.body?.note||'');
  if(!states.includes(stato)||note.length>2000)return res.status(400).json({message:'Stato o nota non validi'});
+ if(stato==='DOCUMENTI_MANCANTI'&&note.trim().length<5)return res.status(400).json({message:'Indica quali documenti o dati mancano prima di impostare Documenti mancanti'});
  conn=await db.getConnection();await conn.beginTransaction();
  const [[p]]=await conn.query('SELECT * FROM hr_pratiche WHERE id=? FOR UPDATE',[req.params.id]);
  if(!p){await conn.rollback();return res.status(404).json({message:'Pratica non trovata'})}
