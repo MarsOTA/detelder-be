@@ -105,6 +105,25 @@ router.patch('/pratiche/:id/stato',allow('HR'),async(req,res,next)=>{let conn;tr
  if(!p){await conn.rollback();return res.status(404).json({message:'Pratica non trovata'})}
  const permitted={DA_ELABORARE:['IN_LAVORAZIONE','DOCUMENTI_MANCANTI'],
  IN_LAVORAZIONE:['DOCUMENTI_MANCANTI','COMPLETATO'],DOCUMENTI_MANCANTI:['IN_LAVORAZIONE'],COMPLETATO:[]};
+ if(stato==='COMPLETATO'){
+  const [[contract]]=await conn.query(`SELECT idContratto,tipologia,path_contratto_unilav
+    FROM contratto WHERE idOperatore=? AND REPLACE(tipologia,'CONTRATTO_','')=?
+      AND DATE_FORMAT(data_inizio,'%Y-%m-%d')=DATE_FORMAT(?,'%Y-%m-%d')
+    ORDER BY idContratto DESC LIMIT 1`,[p.idOperatore,p.tipologia,p.dataInizio]);
+  const required=['CHIAMATA','TEMPO_DETERMINATO','TEMPO_INDETERMINATO'].includes(p.tipologia);
+  if(p.tipologia!=='FATTURA'&&!contract){await conn.rollback();return res.status(409).json({message:'Impossibile completare: contratto non ancora generato'})}
+  if(required&&!contract?.path_contratto_unilav){await conn.rollback();return res.status(409).json({message:'Impossibile completare: UNILAV di assunzione non caricata'})}
+  if(p.tipologia==='CHIAMATA'){
+   const [shifts]=await conn.query(`SELECT DATE_FORMAT(dataTurno,'%Y-%m-%d') AS giorno FROM turnoOperatore
+       WHERE idOperatore=? AND dataTurno BETWEEN CURDATE() AND DATE_ADD(CURDATE(),INTERVAL 7 DAY)
+       GROUP BY DATE(dataTurno)`,[p.idOperatore]);
+   for(const shift of shifts){
+    const [calls]=await conn.query(`SELECT id FROM chiamata_intermit_hr WHERE idOperatore=? AND idContratto=? AND stato='INVIATA'
+       AND dataInizio<=? AND dataFine>=? LIMIT 1`,[p.idOperatore,contract.idContratto,shift.giorno,shift.giorno]);
+    if(!calls.length){await conn.rollback();return res.status(409).json({message:'Impossibile completare: chiamata del '+shift.giorno+' non ancora comunicata'})}
+   }
+  }
+ }
  if(!(permitted[p.stato]||[]).includes(stato)){await conn.rollback();return res.status(409).json({message:'Transizione di stato non consentita'})}
  await conn.query('UPDATE hr_pratiche SET stato=?,note=?,presoInCaricoDa=COALESCE(presoInCaricoDa,?) WHERE id=?',
  [stato,note||p.note,req.hrIdentity.id,p.id]);
