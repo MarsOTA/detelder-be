@@ -91,7 +91,6 @@ router.put('/pratiche/:id/codice-comunicazione',allow('HR'),async(req,res,next)=
  if(codice.length>80||! /^[A-Z0-9._\\/-]*$/.test(codice))return res.status(400).json({message:'Codice comunicazione non valido'});
  const [[p]]=await db.query('SELECT id,stato FROM hr_pratiche WHERE id=?',[req.params.id]);
  if(!p)return res.status(404).json({message:'Pratica non trovata'});
- if(p.stato==='COMPLETATO')return res.status(409).json({message:'Pratica già completata'});
  await ensureCodici();
  await db.query('INSERT INTO hr_codici_comunicazione (praticaId,codice,aggiornatoDa) VALUES (?,?,?) ON DUPLICATE KEY UPDATE codice=VALUES(codice),aggiornatoDa=VALUES(aggiornatoDa)',[p.id,codice,req.hrIdentity.id]);
  await db.query('INSERT INTO hr_pratiche_log (praticaId,attoreId,statoPrima,statoDopo,dettaglio) VALUES (?,?,?,?,?)',[p.id,req.hrIdentity.id,p.stato,p.stato,codice?'Codice comunicazione registrato/aggiornato':'Codice comunicazione svuotato']);
