@@ -26,15 +26,17 @@ async function reconcilePractice(p,actorId){
   const [shifts]=await db.query(`SELECT DISTINCT DATE_FORMAT(dataTurno,'%Y-%m-%d') AS giorno FROM turnoOperatore
    WHERE idOperatore=? AND dataTurno>=CURDATE() AND dataTurno<=DATE_ADD(CURDATE(),INTERVAL 7 DAY)`,[p.idOperatore]);
   if(shifts.length){
-   const [calls]=await db.query(`SELECT DATE_FORMAT(dataInizio,'%Y-%m-%d') AS dal,DATE_FORMAT(dataFine,'%Y-%m-%d') AS al
-    FROM chiamata_intermit_hr WHERE idContratto=? AND idOperatore=? AND stato='INVIATA'`,[contract.idContratto,p.idOperatore]);
+   let calls=[];
+   try{[calls]=await db.query(`SELECT DATE_FORMAT(dataInizio,'%Y-%m-%d') AS dal,DATE_FORMAT(dataFine,'%Y-%m-%d') AS al
+    FROM chiamata_intermit_hr WHERE idContratto=? AND idOperatore=? AND stato='INVIATA'`,[contract.idContratto,p.idOperatore]);}
+   catch(e){if(e.code!=='ER_NO_SUCH_TABLE')throw e}
    complete=shifts.every(t=>calls.some(c=>c.dal<=t.giorno&&c.al>=t.giorno));
   }
  }
  const target=complete?'COMPLETATO':contract?'IN_LAVORAZIONE':'DA_ELABORARE';
  if(p.stato!==target){
-  const [result]=await db.query('UPDATE hr_pratiche SET stato=?,presoInCaricoDa=COALESCE(presoInCaricoDa,?) WHERE id=? AND stato=?',
-   [target,actorId,p.id,p.stato]);
+  const [result]=await db.query('UPDATE hr_pratiche SET stato=? WHERE id=? AND stato=?',
+   [target,p.id,p.stato]);
   if(result.affectedRows)await db.query('INSERT INTO hr_pratiche_log (praticaId,attoreId,statoPrima,statoDopo,dettaglio) VALUES (?,?,?,?,?)',
    [p.id,actorId,p.stato,target,'Stato calcolato automaticamente dai documenti e dalle chiamate PEC']);
  }
