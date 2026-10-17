@@ -11,9 +11,41 @@ const shape=(r)=>({id:r.id,idOperatore:r.idOperatore,nome:r.nome,cognome:r.cogno
  tipologia:r.tipologia,datore:r.datore,dataInizio:r.dataInizio,dataFine:r.dataFine,
  stato:r.stato,note:r.note,assegnatoDa:r.assegnatoDa,presoInCaricoDa:r.presoInCaricoDa,assegnatoDaNome:r.assegnatoDaNome,assegnatoDaCognome:r.assegnatoDaCognome,presoInCaricoDaNome:r.presoInCaricoDaNome,presoInCaricoDaCognome:r.presoInCaricoDaCognome,creatoIl:r.creatoIl,aggiornatoIl:r.aggiornatoIl});
 const query=`SELECT p.*,d.nome,d.cognome,assegnatore.nome AS assegnatoDaNome,assegnatore.cognome AS assegnatoDaCognome,incaricato.nome AS presoInCaricoDaNome,incaricato.cognome AS presoInCaricoDaCognome FROM hr_pratiche p LEFT JOIN dipendenti d ON d.id=p.idOperatore LEFT JOIN dipendenti assegnatore ON assegnatore.id=p.assegnatoDa LEFT JOIN dipendenti incaricato ON incaricato.id=p.presoInCaricoDa`;
+// All role views derive progress from persisted documents and PEC confirmations.
+// Recomputed whenever the queue is read; changes and recalculations are audited.
+async function reconcilePractice(p,actorId){
+ if(p.tipologia==='FATTURA')return p.stato==='DOCUMENTI_MANCANTI'?'DA_ELABORARE':p.stato;
+ const [contracts]=await db.query(`SELECT idContratto,path_contratto_unilav FROM contratto
+  WHERE idOperatore=? AND REPLACE(tipologia,'CONTRATTO_','')=? AND DATE_FORMAT(data_inizio,'%Y-%m-%d')=DATE_FORMAT(?,'%Y-%m-%d')
+  ORDER BY idContratto DESC LIMIT 1`,[p.idOperatore,p.tipologia,p.dataInizio]);
+ const contract=contracts[0];
+ let complete=!!contract;
+ if(complete&&['CHIAMATA','TEMPO_DETERMINATO','TEMPO_INDETERMINATO'].includes(p.tipologia))
+   complete=!!contract.path_contratto_unilav;
+ if(complete&&p.tipologia==='CHIAMATA'){
+  const [shifts]=await db.query(`SELECT DISTINCT DATE_FORMAT(dataTurno,'%Y-%m-%d') AS giorno FROM turnoOperatore
+   WHERE idOperatore=? AND dataTurno>=CURDATE() AND dataTurno<=DATE_ADD(CURDATE(),INTERVAL 7 DAY)`,[p.idOperatore]);
+  if(shifts.length){
+   const [calls]=await db.query(`SELECT DATE_FORMAT(dataInizio,'%Y-%m-%d') AS dal,DATE_FORMAT(dataFine,'%Y-%m-%d') AS al
+    FROM chiamata_intermit_hr WHERE idContratto=? AND idOperatore=? AND stato='INVIATA'`,[contract.idContratto,p.idOperatore]);
+   complete=shifts.every(t=>calls.some(c=>c.dal<=t.giorno&&c.al>=t.giorno));
+  }
+ }
+ const target=complete?'COMPLETATO':contract?'IN_LAVORAZIONE':'DA_ELABORARE';
+ if(p.stato!==target){
+  const [result]=await db.query('UPDATE hr_pratiche SET stato=?,presoInCaricoDa=COALESCE(presoInCaricoDa,?) WHERE id=? AND stato=?',
+   [target,actorId,p.id,p.stato]);
+  if(result.affectedRows)await db.query('INSERT INTO hr_pratiche_log (praticaId,attoreId,statoPrima,statoDopo,dettaglio) VALUES (?,?,?,?,?)',
+   [p.id,actorId,p.stato,target,'Stato calcolato automaticamente dai documenti e dalle chiamate PEC']);
+ }
+ return target;
+}
 router.get('/me',(req,res)=>res.json({id:req.hrIdentity.id,role:req.hrIdentity.role}));
 router.get('/pratiche',async(req,res,next)=>{try{
- const [rows]=await db.query(query+' ORDER BY CASE p.stato WHEN \'DA_ELABORARE\' THEN 0 WHEN \'IN_LAVORAZIONE\' THEN 1 WHEN \'DOCUMENTI_MANCANTI\' THEN 2 ELSE 3 END,p.creatoIl DESC');
+ const [rows]=await db.query(query+' ORDER BY p.creatoIl DESC');
+ for(const p of rows){p.stato=await reconcilePractice(p,req.hrIdentity.id)}
+ const order={DA_ELABORARE:0,IN_LAVORAZIONE:1,COMPLETATO:2};
+ rows.sort((a,b)=>(order[a.stato]??1)-(order[b.stato]??1));
  res.json(rows.map(shape));
 }catch(e){next(e)}});
 router.get('/pratiche/:id/log',async(req,res,next)=>{try{
