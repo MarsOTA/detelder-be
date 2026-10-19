@@ -9,11 +9,13 @@ const states=['DA_ELABORARE','IN_LAVORAZIONE','DOCUMENTI_MANCANTI','COMPLETATO']
 const dateOk=v=>!v||(/^\d{4}-\d{2}-\d{2}$/.test(v)&&!Number.isNaN(Date.parse(v+'T12:00:00Z')));
 const shape=(r)=>({id:r.id,idOperatore:r.idOperatore,nome:r.nome,cognome:r.cognome,
  tipologia:r.tipologia,datore:r.datore,dataInizio:r.dataInizio,dataFine:r.dataFine,
- stato:r.stato,note:r.note,assegnatoDa:r.assegnatoDa,presoInCaricoDa:r.presoInCaricoDa,assegnatoDaNome:r.assegnatoDaNome,assegnatoDaCognome:r.assegnatoDaCognome,presoInCaricoDaNome:r.presoInCaricoDaNome,presoInCaricoDaCognome:r.presoInCaricoDaCognome,creatoIl:r.creatoIl,aggiornatoIl:r.aggiornatoIl});
+ stato:r.stato,note:r.note,assegnatoDa:r.assegnatoDa,presoInCaricoDa:r.presoInCaricoDa,assegnatoDaNome:r.assegnatoDaNome,assegnatoDaCognome:r.assegnatoDaCognome,presoInCaricoDaNome:r.presoInCaricoDaNome,presoInCaricoDaCognome:r.presoInCaricoDaCognome,creatoIl:r.creatoIl,aggiornatoIl:r.aggiornatoIl,simulazioneTest:!!r.simulazioneTest});
 const query=`SELECT p.*,d.nome,d.cognome,assegnatore.nome AS assegnatoDaNome,assegnatore.cognome AS assegnatoDaCognome,incaricato.nome AS presoInCaricoDaNome,incaricato.cognome AS presoInCaricoDaCognome FROM hr_pratiche p LEFT JOIN dipendenti d ON d.id=p.idOperatore LEFT JOIN dipendenti assegnatore ON assegnatore.id=p.assegnatoDa LEFT JOIN dipendenti incaricato ON incaricato.id=p.presoInCaricoDa`;
 // All role views derive progress from persisted documents and PEC confirmations.
 // Recomputed whenever the queue is read; changes and recalculations are audited.
 async function reconcilePractice(p,actorId){
+ p.simulazioneTest=false;
+ const testMode=(process.env.DB_HOST||'').toLowerCase().endsWith('.aivencloud.com');
  if(p.tipologia==='FATTURA')return p.stato==='DOCUMENTI_MANCANTI'?'DA_ELABORARE':p.stato;
  const [contracts]=await db.query(`SELECT idContratto,path_contratto_unilav FROM contratto
   WHERE idOperatore=? AND REPLACE(tipologia,'CONTRATTO_','')=? AND DATE_FORMAT(data_inizio,'%Y-%m-%d')=DATE_FORMAT(?,'%Y-%m-%d')
@@ -27,10 +29,12 @@ async function reconcilePractice(p,actorId){
    WHERE idOperatore=? AND dataTurno>=CURDATE() AND dataTurno<=DATE_ADD(CURDATE(),INTERVAL 7 DAY)`,[p.idOperatore]);
   if(shifts.length){
    let calls=[];
-   try{[calls]=await db.query(`SELECT DATE_FORMAT(dataInizio,'%Y-%m-%d') AS dal,DATE_FORMAT(dataFine,'%Y-%m-%d') AS al
-    FROM chiamata_intermit_hr WHERE idContratto=? AND idOperatore=? AND stato='INVIATA' AND COALESCE(esitoInvio,'') NOT LIKE 'SIMULAZIONE TEST%'`,[contract.idContratto,p.idOperatore]);}
+   try{[calls]=await db.query(`SELECT DATE_FORMAT(dataInizio,'%Y-%m-%d') AS dal,DATE_FORMAT(dataFine,'%Y-%m-%d') AS al,esitoInvio
+    FROM chiamata_intermit_hr WHERE idContratto=? AND idOperatore=? AND stato='INVIATA'
+      AND (?=1 OR COALESCE(esitoInvio,'') NOT LIKE 'SIMULAZIONE TEST%')`,[contract.idContratto,p.idOperatore,testMode?1:0]);}
    catch(e){if(e.code!=='ER_NO_SUCH_TABLE')throw e}
    complete=shifts.every(t=>calls.some(c=>c.dal<=t.giorno&&c.al>=t.giorno));
+   p.simulazioneTest=complete&&shifts.some(t=>calls.some(c=>c.dal<=t.giorno&&c.al>=t.giorno&&String(c.esitoInvio||"").startsWith("SIMULAZIONE TEST")));
   }
  }
  const target=complete?'COMPLETATO':(contract||p.presoInCaricoDa)?'IN_LAVORAZIONE':'DA_ELABORARE';
@@ -38,7 +42,7 @@ async function reconcilePractice(p,actorId){
   const [result]=await db.query('UPDATE hr_pratiche SET stato=? WHERE id=? AND stato=?',
    [target,p.id,p.stato]);
   if(result.affectedRows)await db.query('INSERT INTO hr_pratiche_log (praticaId,attoreId,statoPrima,statoDopo,dettaglio) VALUES (?,?,?,?,?)',
-   [p.id,actorId,p.stato,target,'Stato calcolato automaticamente dai documenti e dalle chiamate PEC']);
+   [p.id,actorId,p.stato,target,p.simulazioneTest?'Solo TEST: documenti e chiamate simulate completati, nessun invio PEC certificato':'Stato calcolato automaticamente dai documenti e dalle comunicazioni']);
  }
  return target;
 }
