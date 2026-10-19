@@ -28,7 +28,7 @@ async function reconcilePractice(p,actorId){
   if(shifts.length){
    let calls=[];
    try{[calls]=await db.query(`SELECT DATE_FORMAT(dataInizio,'%Y-%m-%d') AS dal,DATE_FORMAT(dataFine,'%Y-%m-%d') AS al
-    FROM chiamata_intermit_hr WHERE idContratto=? AND idOperatore=? AND stato='INVIATA'`,[contract.idContratto,p.idOperatore]);}
+    FROM chiamata_intermit_hr WHERE idContratto=? AND idOperatore=? AND stato='INVIATA' AND COALESCE(esitoInvio,'') NOT LIKE 'SIMULAZIONE TEST%'`,[contract.idContratto,p.idOperatore]);}
    catch(e){if(e.code!=='ER_NO_SUCH_TABLE')throw e}
    complete=shifts.every(t=>calls.some(c=>c.dal<=t.giorno&&c.al>=t.giorno));
   }
