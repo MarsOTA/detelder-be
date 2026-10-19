@@ -1,5 +1,6 @@
 const express = require('express');
 const db = require('../../db');
+const {resolve,allow}=require('../../middleware/hrAccess');
 const router = express.Router();
 
 // Archivio separato per le comunicazioni figlie: nessuna modifica alla tabella contratto.
@@ -31,6 +32,15 @@ async function ensureTable() {
   await ready;
 }
 
+async function ensureCancellations(){
+ await ensureTable();
+ await db.query(`CREATE TABLE IF NOT EXISTS chiamata_intermit_hr_annullamenti_test (
+  idChiamata BIGINT UNSIGNED PRIMARY KEY,
+  xml LONGTEXT NOT NULL,
+  esito VARCHAR(200) NOT NULL,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+ ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+}
 async function ensureEmployerTable() {
   if (!(process.env.DB_HOST || '').toLowerCase().endsWith('.aivencloud.com')) throw new Error('Configurazione datore disponibile solo su Aiven');
   await db.query(`CREATE TABLE IF NOT EXISTS configurazione_datore_intermit_hr (
@@ -78,7 +88,10 @@ const list = async(req,res,next) => {
     const [rows]=await db.query(`SELECT id,DATE_FORMAT(dataInizio,'%Y-%m-%d') AS dataInizio,DATE_FORMAT(dataFine,'%Y-%m-%d') AS dataFine,
        stato,xml AS xmlArchiviato,DATE_FORMAT(inviataIl,'%Y-%m-%dT%H:%i:%s') AS dataOraInvio,esitoInvio
        FROM chiamata_intermit_hr WHERE idContratto=? AND idOperatore=? ORDER BY dataInizio DESC,id DESC`,[idContratto,idOperatore]);
-    res.json(rows);
+    await ensureCancellations();
+    const [annullate]=await db.query('SELECT idChiamata,xml,esito FROM chiamata_intermit_hr_annullamenti_test WHERE idChiamata IN (SELECT id FROM chiamata_intermit_hr WHERE idContratto=? AND idOperatore=?)',[idContratto,idOperatore]);
+    const byId=new Map(annullate.map(a=>[Number(a.idChiamata),a]));
+    res.json(rows.map(row=>({...row,annullamentoTest:!!byId.get(Number(row.id)),xmlAnnullamento:byId.get(Number(row.id))?.xml||null,esitoAnnullamento:byId.get(Number(row.id))?.esito||null})));
   } catch(e){next(e);}
 };
 router.get('/:idOperatore/:idContratto',list);
@@ -110,6 +123,41 @@ router.post('/:idOperatore/:idContratto/:idChiamata/simula-invio',async(req,res,
   await db.query("UPDATE chiamata_intermit_hr SET stato='INVIATA',esitoInvio=?,inviataIl=NOW() WHERE id=? AND idOperatore=? AND idContratto=?",[report,idChiamata,idOperatore,idContratto]);
   res.json({ok:true,simulata:true,ricevuta:report});
  }catch(e){next(e)}
+});
+// Annullamento simulato: conserva la chiamata e il file di annullamento, ma non spedisce PEC.
+router.post('/:idOperatore/:idContratto/:idChiamata/simula-annullamento',resolve,allow('HR'),async(req,res,next)=>{
+ try{
+  const {idOperatore,idContratto,idChiamata}=req.params;
+  if(![idOperatore,idContratto,idChiamata].every(valido))return res.status(400).json({message:'Identificativi non validi'});
+  await ensureCancellations();
+  const [[original]]=await db.query('SELECT id,stato,esitoInvio,dataInizio,dataFine FROM chiamata_intermit_hr WHERE id=? AND idOperatore=? AND idContratto=?',[idChiamata,idOperatore,idContratto]);
+  if(!original)return res.status(404).json({message:'Chiamata non trovata'});
+  if(original.stato!=='INVIATA'||!String(original.esitoInvio||'').startsWith('SIMULAZIONE TEST'))return res.status(409).json({message:'È possibile simulare l’annullamento soltanto di chiamate simulate. Per le comunicazioni reali serve il servizio email configurato.'});
+  const xml=String(req.body?.xml||'');
+  if(xml.length<100||xml.length>100000||!xml.includes('<ANannullamento>1</ANannullamento>'))return res.status(400).json({message:'XML di annullamento non valido'});
+  const esito='SIMULAZIONE TEST - ANNULLAMENTO NON INVIATO - '+new Date().toISOString();
+  const [record]=await db.query('INSERT IGNORE INTO chiamata_intermit_hr_annullamenti_test (idChiamata,xml,esito) VALUES(?,?,?)',[idChiamata,xml,esito]);
+  if(!record.affectedRows)return res.status(409).json({message:'Annullamento test già registrato'});
+  res.json({ok:true,simulata:true,esito});
+ }catch(e){next(e)}
+});
+// Pulizia rigorosamente limitata alle simulazioni del contratto selezionato.
+// Non rimuove comunicazioni reali o contratti.
+router.delete('/:idOperatore/:idContratto/simulazioni',resolve,allow('HR','ADMIN'),async(req,res,next)=>{
+ const {idOperatore,idContratto}=req.params;
+ if(![idOperatore,idContratto].every(valido))return res.status(400).json({message:'Identificativi non validi'});
+ if(!(process.env.DB_HOST||'').toLowerCase().endsWith('.aivencloud.com'))return res.status(403).json({message:'Reset ammesso solo su Aiven test'});
+ let connection;
+ try{
+  await ensureCancellations();
+  connection=await db.getConnection();await connection.beginTransaction();
+  const [ids]=await connection.query("SELECT id FROM chiamata_intermit_hr WHERE idOperatore=? AND idContratto=? AND esitoInvio LIKE 'SIMULAZIONE TEST%'",[idOperatore,idContratto]);
+  await connection.query("DELETE a FROM chiamata_intermit_hr_annullamenti_test a INNER JOIN chiamata_intermit_hr c ON c.id=a.idChiamata WHERE c.idOperatore=? AND c.idContratto=? AND c.esitoInvio LIKE 'SIMULAZIONE TEST%'",[idOperatore,idContratto]);
+  await connection.query("DELETE FROM chiamata_intermit_hr WHERE idOperatore=? AND idContratto=? AND esitoInvio LIKE 'SIMULAZIONE TEST%'",[idOperatore,idContratto]);
+  await connection.commit();
+  res.json({ok:true,eliminate:ids.length});
+ }catch(e){if(connection)await connection.rollback();next(e)}
+ finally{if(connection)connection.release()}
 });
 router.patch('/:idOperatore/:idContratto/:idChiamata',async(req,res,next)=>{
   try{
