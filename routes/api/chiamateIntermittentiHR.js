@@ -96,6 +96,21 @@ router.post('/:idOperatore/:idContratto',async(req,res,next)=>{
     res.status(201).json({id:record.insertId,message:'Chiamata salvata come bozza su Aiven'});
   }catch(e){next(e);}
 });
+// Test only: record an explicit simulated email outcome, never a certified PEC delivery.
+router.post('/:idOperatore/:idContratto/:idChiamata/simula-invio',async(req,res,next)=>{
+ try{
+  const {idOperatore,idContratto,idChiamata}=req.params;
+  if(![idOperatore,idContratto,idChiamata].every(valido))return res.status(400).json({message:'Identificativi non validi'});
+  if(!(process.env.DB_HOST||'').toLowerCase().endsWith('.aivencloud.com'))return res.status(403).json({message:'Simulazione disponibile solo sul test Aiven'});
+  await ensureTable();
+  const [rows]=await db.query('SELECT id,stato,xml FROM chiamata_intermit_hr WHERE id=? AND idOperatore=? AND idContratto=?',[idChiamata,idOperatore,idContratto]);
+  if(!rows.length)return res.status(404).json({message:'Chiamata non trovata'});
+  if(rows[0].stato==='INVIATA')return res.status(409).json({message:'Invio reale già registrato'});
+  const report='SIMULAZIONE TEST - NESSUNA EMAIL SPEDITA - ID '+idChiamata+' - '+new Date().toISOString();
+  await db.query("UPDATE chiamata_intermit_hr SET stato='PEC_PREPARATA',esitoInvio=?,inviataIl=NOW() WHERE id=? AND idOperatore=? AND idContratto=?",[report,idChiamata,idOperatore,idContratto]);
+  res.json({ok:true,simulata:true,ricevuta:report});
+ }catch(e){next(e)}
+});
 router.patch('/:idOperatore/:idContratto/:idChiamata',async(req,res,next)=>{
   try{
     const {idOperatore,idContratto,idChiamata}=req.params;
