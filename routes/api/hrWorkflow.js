@@ -129,7 +129,7 @@ router.post('/pratiche/:id/attivita',allow('HR'),async(req,res,next)=>{try{
  [p.id,req.hrIdentity.id,p.stato,p.stato,descrizioni[azione]+' · Contratto #'+contrattoId]);
  res.status(201).json({registrato:true});
 }catch(e){next(e)}});
-router.patch('/pratiche/:id/periodo',allow('HR'),async(req,res,next)=>{let conn;try{
+router.patch('/pratiche/:id/periodo',allow('HR','ADMIN'),async(req,res,next)=>{let conn;try{
  const {dataInizio,dataFine}=req.body||{};
  if(typeof dataInizio!=='string'||!dateOk(dataInizio)||!dataInizio||
     !(dataFine===null||(typeof dataFine==='string'&&dateOk(dataFine)))||
