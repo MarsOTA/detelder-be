@@ -33,7 +33,7 @@ async function reconcilePractice(p,actorId){
    complete=shifts.every(t=>calls.some(c=>c.dal<=t.giorno&&c.al>=t.giorno));
   }
  }
- const target=complete?'COMPLETATO':contract?'IN_LAVORAZIONE':'DA_ELABORARE';
+ const target=complete?'COMPLETATO':(contract||p.presoInCaricoDa)?'IN_LAVORAZIONE':'DA_ELABORARE';
  if(p.stato!==target){
   const [result]=await db.query('UPDATE hr_pratiche SET stato=? WHERE id=? AND stato=?',
    [target,p.id,p.stato]);
@@ -50,6 +50,17 @@ router.get('/pratiche',async(req,res,next)=>{try{
  rows.sort((a,b)=>(order[a.stato]??1)-(order[b.stato]??1));
  res.json(rows.map(shape));
 }catch(e){next(e)}});
+router.post('/pratiche/:id/prendi-in-carico',allow('HR'),async(req,res,next)=>{
+ try{
+  const [[p]]=await db.query('SELECT id,stato,presoInCaricoDa FROM hr_pratiche WHERE id=?',[req.params.id]);
+  if(!p)return res.status(404).json({message:'Pratica non trovata'});
+  if(!p.presoInCaricoDa){
+   const [updated]=await db.query('UPDATE hr_pratiche SET presoInCaricoDa=?,stato=IF(stato=\'DA_ELABORARE\',\'IN_LAVORAZIONE\',stato) WHERE id=? AND presoInCaricoDa IS NULL',[req.hrIdentity.id,p.id]);
+   if(updated.affectedRows)await db.query('INSERT INTO hr_pratiche_log (praticaId,attoreId,statoPrima,statoDopo,dettaglio) VALUES (?,?,?,?,?)',[p.id,req.hrIdentity.id,p.stato,'IN_LAVORAZIONE','Pratica aperta e presa in carico da HR']);
+  }
+  res.json({ok:true});
+ }catch(e){next(e)}
+});
 router.get('/pratiche/:id/log',async(req,res,next)=>{try{
  const [[pratica]]=await db.query('SELECT id FROM hr_pratiche WHERE id=?',[req.params.id]);
  if(!pratica)return res.status(404).json({message:'Pratica non trovata'});
