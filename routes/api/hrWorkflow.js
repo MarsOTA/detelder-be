@@ -65,6 +65,11 @@ router.post('/pratiche',allow('ADMIN'),async(req,res,next)=>{let conn;try{
  const [[dip]]=await db.query('SELECT id FROM dipendenti WHERE id=? AND ruolo=\'OPERATORE\' LIMIT 1',[idOperatore]);
  if(!dip)return res.status(404).json({message:'Operatore non trovato'});
  conn=await db.getConnection();await conn.beginTransaction();
+ if(!dataInizio){await conn.rollback();return res.status(400).json({message:'Imposta la data di inizio del contratto'});}
+ const [[existing]]=await conn.query(`SELECT idContratto FROM contratto WHERE idOperatore=? AND REPLACE(tipologia,'CONTRATTO_','')=? AND DATE(data_inizio)=? LIMIT 1`,[idOperatore,tipologia,dataInizio]);
+ if(existing){await conn.rollback();return res.status(409).json({message:'Esiste già un contratto dello stesso tipo con questa data di inizio'});}
+ const [[duplicate]]=await conn.query(`SELECT id FROM hr_pratiche WHERE idOperatore=? AND tipologia=? AND DATE(dataInizio)=? LIMIT 1`,[idOperatore,tipologia,dataInizio]);
+ if(duplicate){await conn.rollback();return res.status(409).json({message:'Esiste già una pratica per questo tipo di contratto e questa data'});}
  const [record]=await conn.query(`INSERT INTO hr_pratiche (idOperatore,tipologia,datore,dataInizio,dataFine,note,stato,assegnatoDa)
  VALUES (?,?,?,?,?,?,'DA_ELABORARE',?)`,[idOperatore,tipologia,datore,dataInizio||null,dataFine||null,note,req.hrIdentity.id]);
  await conn.query('INSERT INTO hr_pratiche_log (praticaId,attoreId,statoDopo,dettaglio) VALUES (?,?,?,?)',
