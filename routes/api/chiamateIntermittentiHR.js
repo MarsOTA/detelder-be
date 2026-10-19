@@ -141,6 +141,29 @@ router.post('/:idOperatore/:idContratto/:idChiamata/simula-annullamento',resolve
   res.json({ok:true,simulata:true,esito});
  }catch(e){next(e)}
 });
+// Pulizia mirata dei due vecchi record preparati il 18/10/2026.
+// Non può cancellare invii (veri o simulati), altri giorni o altri contratti.
+router.delete('/:idOperatore/:idContratto/legacy-2026-10-18',resolve,allow('HR','ADMIN'),async(req,res,next)=>{
+ const {idOperatore,idContratto}=req.params;
+ if(![idOperatore,idContratto].every(valido))return res.status(400).json({message:'Identificativi non validi'});
+ if(!(process.env.DB_HOST||'').toLowerCase().endsWith('.aivencloud.com'))return res.status(403).json({message:'Pulizia ammessa solo nel database Aiven test'});
+ let connection;
+ try{
+  await ensureTable();
+  connection=await db.getConnection();await connection.beginTransaction();
+  const [rows]=await connection.query(`SELECT id FROM chiamata_intermit_hr
+    WHERE idOperatore=? AND idContratto=? AND dataInizio='2026-10-18'
+      AND stato='PEC_PREPARATA' AND (esitoInvio IS NULL OR esitoInvio='')
+    FOR UPDATE`,[idOperatore,idContratto]);
+  if(rows.length!==2){await connection.rollback();return res.status(409).json({message:'Attese esattamente 2 chiamate preparate il 18/10/2026 per questo contratto; trovate '+rows.length+'. Nessun record eliminato.'})}
+  const ids=rows.map(r=>r.id);
+  const [result]=await connection.query('DELETE FROM chiamata_intermit_hr WHERE id IN (?,?) AND idOperatore=? AND idContratto=? AND stato=\'PEC_PREPARATA\' AND (esitoInvio IS NULL OR esitoInvio=\'\')',[ids[0],ids[1],idOperatore,idContratto]);
+  if(result.affectedRows!==2)throw new Error('Controllo cancellazione record fallito');
+  await connection.commit();
+  res.json({ok:true,eliminate:2,ids});
+ }catch(e){if(connection)await connection.rollback();next(e)}
+ finally{if(connection)connection.release()}
+});
 // Pulizia rigorosamente limitata alle simulazioni del contratto selezionato.
 // Non rimuove comunicazioni reali o contratti.
 router.delete('/:idOperatore/:idContratto/simulazioni',resolve,allow('HR','ADMIN'),async(req,res,next)=>{
