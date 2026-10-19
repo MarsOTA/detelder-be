@@ -106,7 +106,7 @@ router.post('/:idOperatore/:idContratto/:idChiamata/simula-invio',async(req,res,
   const [rows]=await db.query('SELECT id,stato,xml,esitoInvio FROM chiamata_intermit_hr WHERE id=? AND idOperatore=? AND idContratto=?',[idChiamata,idOperatore,idContratto]);
   if(!rows.length)return res.status(404).json({message:'Chiamata non trovata'});
   if(rows[0].stato==='INVIATA'&&!(rows[0].esitoInvio||'').startsWith('SIMULAZIONE TEST'))return res.status(409).json({message:'Invio reale già registrato'});
-  const report='SIMULAZIONE TEST - NESSUNA EMAIL SPEDITA - ID '+idChiamata+' - '+new Date().toISOString();
+  const report='SIMULAZIONE TEST - FACSIMILE RICEVUTA DI CONSEGNA NON VALIDA - NESSUNA EMAIL SPEDITA - ID '+idChiamata+' - '+new Date().toISOString();
   await db.query("UPDATE chiamata_intermit_hr SET stato='INVIATA',esitoInvio=?,inviataIl=NOW() WHERE id=? AND idOperatore=? AND idContratto=?",[report,idChiamata,idOperatore,idContratto]);
   res.json({ok:true,simulata:true,ricevuta:report});
  }catch(e){next(e)}
