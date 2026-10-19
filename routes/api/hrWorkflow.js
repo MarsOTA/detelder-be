@@ -13,6 +13,14 @@ const shape=(r)=>({id:r.id,idOperatore:r.idOperatore,nome:r.nome,cognome:r.cogno
 const query=`SELECT p.*,d.nome,d.cognome,assegnatore.nome AS assegnatoDaNome,assegnatore.cognome AS assegnatoDaCognome,incaricato.nome AS presoInCaricoDaNome,incaricato.cognome AS presoInCaricoDaCognome FROM hr_pratiche p LEFT JOIN dipendenti d ON d.id=p.idOperatore LEFT JOIN dipendenti assegnatore ON assegnatore.id=p.assegnatoDa LEFT JOIN dipendenti incaricato ON incaricato.id=p.presoInCaricoDa`;
 // All role views derive progress from persisted documents and PEC confirmations.
 // Recomputed whenever the queue is read; changes and recalculations are audited.
+let ensureTestAnnullamentiPromise=null;
+async function ensureTestAnnullamenti(){
+ if(!ensureTestAnnullamentiPromise)ensureTestAnnullamentiPromise=db.query(`CREATE TABLE IF NOT EXISTS chiamata_intermit_hr_annullamenti_test (
+  idChiamata BIGINT UNSIGNED PRIMARY KEY, xml LONGTEXT NOT NULL, esito VARCHAR(200) NOT NULL,
+  createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+ ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`).catch(e=>{ensureTestAnnullamentiPromise=null;throw e});
+ return ensureTestAnnullamentiPromise;
+}
 async function reconcilePractice(p,actorId){
  p.simulazioneTest=false;
  const testMode=(process.env.DB_HOST||'').toLowerCase().endsWith('.aivencloud.com');
@@ -25,13 +33,15 @@ async function reconcilePractice(p,actorId){
  if(complete&&['CHIAMATA','TEMPO_DETERMINATO','TEMPO_INDETERMINATO'].includes(p.tipologia))
    complete=!!contract.path_contratto_unilav;
  if(complete&&p.tipologia==='CHIAMATA'){
+  if(testMode)await ensureTestAnnullamenti();
   const [shifts]=await db.query(`SELECT DISTINCT DATE_FORMAT(dataTurno,'%Y-%m-%d') AS giorno FROM turnoOperatore
    WHERE idOperatore=? AND dataTurno>=CURDATE() AND dataTurno<=DATE_ADD(CURDATE(),INTERVAL 7 DAY)`,[p.idOperatore]);
   if(shifts.length){
    let calls=[];
    try{[calls]=await db.query(`SELECT DATE_FORMAT(dataInizio,'%Y-%m-%d') AS dal,DATE_FORMAT(dataFine,'%Y-%m-%d') AS al,esitoInvio
     FROM chiamata_intermit_hr WHERE idContratto=? AND idOperatore=? AND stato='INVIATA'
-      AND (?=1 OR COALESCE(esitoInvio,'') NOT LIKE 'SIMULAZIONE TEST%')`,[contract.idContratto,p.idOperatore,testMode?1:0]);}
+      AND (?=1 OR COALESCE(esitoInvio,'') NOT LIKE 'SIMULAZIONE TEST%')
+    AND (?=0 OR NOT EXISTS (SELECT 1 FROM chiamata_intermit_hr_annullamenti_test ann WHERE ann.idChiamata=chiamata_intermit_hr.id))`,[contract.idContratto,p.idOperatore,testMode?1:0,testMode?1:0]);}
    catch(e){if(e.code!=='ER_NO_SUCH_TABLE')throw e}
    complete=shifts.every(t=>calls.some(c=>c.dal<=t.giorno&&c.al>=t.giorno));
    p.simulazioneTest=complete&&shifts.some(t=>calls.some(c=>c.dal<=t.giorno&&c.al>=t.giorno&&String(c.esitoInvio||"").startsWith("SIMULAZIONE TEST")));
