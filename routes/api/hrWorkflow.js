@@ -91,6 +91,11 @@ router.post('/pratiche',allow('ADMIN'),async(req,res,next)=>{let conn;try{
  if(!dip)return res.status(404).json({message:'Operatore non trovato'});
  conn=await db.getConnection();await conn.beginTransaction();
  if(!dataInizio){await conn.rollback();return res.status(400).json({message:'Imposta la data di inizio del contratto'});}
+ const today=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Rome'});
+ if(dataInizio>today){await conn.rollback();return res.status(409).json({message:'Contratti futuri non previsti: attendi il giorno di decorrenza per assegnare il contratto'});}
+ const [[active]]=await conn.query(`SELECT idContratto,DATE_FORMAT(data_fine,'%Y-%m-%d') AS fine
+   FROM contratto WHERE idOperatore=? AND data_inizio<=? AND (data_fine IS NULL OR data_fine>=?) LIMIT 1 FOR UPDATE`,[idOperatore,today,today]);
+ if(active){await conn.rollback();return res.status(409).json({message:'Esiste un contratto ancora in vigore: fino alla sua scadenza i turni successivi sono soltanto segnalati'});}
  const [[existing]]=await conn.query(`SELECT idContratto FROM contratto WHERE idOperatore=? AND REPLACE(tipologia,'CONTRATTO_','')=? AND DATE(data_inizio)=? LIMIT 1`,[idOperatore,tipologia,dataInizio]);
  if(existing){await conn.rollback();return res.status(409).json({message:'Esiste già un contratto dello stesso tipo con questa data di inizio'});}
  const [[duplicate]]=await conn.query(`SELECT id FROM hr_pratiche WHERE idOperatore=? AND tipologia=? AND DATE(dataInizio)=? LIMIT 1`,[idOperatore,tipologia,dataInizio]);
