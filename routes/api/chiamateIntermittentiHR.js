@@ -105,8 +105,31 @@ router.post('/:idOperatore/:idContratto',async(req,res,next)=>{
     const padre=await trovaPadre(idContratto,idOperatore);
     if(!padre||padre.tipologia!=='CHIAMATA')return res.status(404).json({message:'Contratto a chiamata non trovato'});
     if(dataInizio>dataFine||dataInizio<padre.dataInizio||(padre.dataFine&&dataFine>padre.dataFine))return res.status(400).json({message:'Date esterne al periodo del contratto padre'});
-    const [record]=await db.query('INSERT INTO chiamata_intermit_hr (idContratto,idOperatore,dataInizio,dataFine,xml,stato) VALUES(?,?,?,?,?,?)',[idContratto,idOperatore,dataInizio,dataFine,xml,'BOZZA']);
-    res.status(201).json({id:record.insertId,message:'Chiamata salvata come bozza su Aiven'});
+    // Detelder policy: il contratto padre deve essere in vigore oggi.
+    // La chiamata futura è consentita solo se ricade ENTRO la scadenza del padre attuale.
+    const today=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Rome'});
+    if(padre.dataInizio>today||(padre.dataFine&&padre.dataFine<today))
+      return res.status(409).json({message:'Contratto padre non in vigore: non si gestiscono contratti futuri o scaduti'});
+    // Il blocco è sul giorno, non sul solo intervallo identico. Una bozza già presente
+    // impedisce una seconda creazione; eventuali annullamenti vanno gestiti separatamente.
+    let connection;
+    try{
+      connection=await db.getConnection();
+      await connection.beginTransaction();
+      // Serializza le creazioni sullo stesso padre; evita richieste concorrenti.
+      const [[locked]]=await connection.query('SELECT idContratto FROM contratto WHERE idContratto=? AND idOperatore=? FOR UPDATE',[idContratto,idOperatore]);
+      if(!locked){await connection.rollback();return res.status(404).json({message:'Contratto padre non trovato'});}
+      const [duplicates]=await connection.query(`SELECT id,DATE_FORMAT(dataInizio,'%Y-%m-%d') AS dal,DATE_FORMAT(dataFine,'%Y-%m-%d') AS al
+        FROM chiamata_intermit_hr WHERE idOperatore=? AND NOT (dataFine<? OR dataInizio>?) LIMIT 1`,[idOperatore,dataInizio,dataFine]);
+      if(duplicates.length){
+        await connection.rollback();
+        return res.status(409).json({message:'Chiamata già presente per il periodo richiesto ('+duplicates[0].dal+' – '+duplicates[0].al+'). Apri l’archivio anziché crearne un’altra.'});
+      }
+      const [record]=await connection.query('INSERT INTO chiamata_intermit_hr (idContratto,idOperatore,dataInizio,dataFine,xml,stato) VALUES(?,?,?,?,?,?)',[idContratto,idOperatore,dataInizio,dataFine,xml,'BOZZA']);
+      await connection.commit();
+      return res.status(201).json({id:record.insertId,message:'Chiamata salvata come bozza su Aiven'});
+    }catch(e){if(connection)await connection.rollback();throw e}
+    finally{if(connection)connection.release()}
   }catch(e){next(e);}
 });
 // Test only: record an explicit simulated email outcome, never a certified PEC delivery.
