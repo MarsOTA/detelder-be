@@ -117,7 +117,7 @@ router.post('/:idOperatore/:idContratto',async(req,res,next)=>{
       connection=await db.getConnection();
       await connection.beginTransaction();
       // Serializza le creazioni sullo stesso padre; evita richieste concorrenti.
-      const [[locked]]=await connection.query('SELECT idContratto FROM contratto WHERE idContratto=? AND idOperatore=? FOR UPDATE',[idContratto,idOperatore]);
+      const [[locked]]=await connection.query('SELECT id FROM dipendenti WHERE id=? FOR UPDATE',[idOperatore]);
       if(!locked){await connection.rollback();return res.status(404).json({message:'Contratto padre non trovato'});}
       const [duplicates]=await connection.query(`SELECT id,DATE_FORMAT(dataInizio,'%Y-%m-%d') AS dal,DATE_FORMAT(dataFine,'%Y-%m-%d') AS al
         FROM chiamata_intermit_hr WHERE idOperatore=? AND NOT (dataFine<? OR dataInizio>?) LIMIT 1`,[idOperatore,dataInizio,dataFine]);
