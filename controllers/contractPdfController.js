@@ -86,7 +86,6 @@ const creaContratto = async (req, res) => {
         const contratto = req.body;
         if(['CHIAMATA','OCCASIONALE','CONTRATTO_TEMPO_DETERMINATO','CONTRATTO_TEMPO_INDETERMINATO'].includes(contratto.tipologia)){
             const today=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Rome'});
-            if(contratto.dataInizio>today)return res.status(409).json({message:'Contratti futuri non gestiti: attendere la decorrenza'});
             const db=require('../db');
             const [[active]]=await db.query('SELECT idContratto FROM contratto WHERE idOperatore=? AND data_inizio<=? AND (data_fine IS NULL OR data_fine>=?) LIMIT 1',[contratto.idOperatore,today,today]);
             if(active)return res.status(409).json({message:'Esiste un contratto ancora in vigore: creare il prossimo solo dopo la scadenza'});
