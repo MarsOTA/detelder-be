@@ -22,7 +22,6 @@ const creaContrattoManuale = async (req, res) => {
         }
 
         const today=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Rome'});
-        if(dataInizio>today)return res.status(409).json({message:'Contratti futuri non gestiti'});
         const [[active]]=await db.query(`SELECT idContratto FROM contratto WHERE idOperatore=? AND data_inizio<=? AND (data_fine IS NULL OR data_fine>=?) LIMIT 1`,[idOperatore,today,today]);
         if(active)return res.status(409).json({message:'Contratto ancora in vigore: attendi la scadenza prima di crearne un altro'});
         const [result] = await db.query(
