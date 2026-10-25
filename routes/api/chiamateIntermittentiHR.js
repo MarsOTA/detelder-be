@@ -105,11 +105,11 @@ router.post('/:idOperatore/:idContratto',async(req,res,next)=>{
     const padre=await trovaPadre(idContratto,idOperatore);
     if(!padre||padre.tipologia!=='CHIAMATA')return res.status(404).json({message:'Contratto a chiamata non trovato'});
     if(dataInizio>dataFine||dataInizio<padre.dataInizio||(padre.dataFine&&dataFine>padre.dataFine))return res.status(400).json({message:'Date esterne al periodo del contratto padre'});
-    // Detelder policy: il contratto padre deve essere in vigore oggi.
-    // La chiamata futura è consentita solo se ricade ENTRO la scadenza del padre attuale.
+    // Un padre già creato, anche con decorrenza futura, consente di preparare
+    // chiamate per turni futuri coperti dal suo periodo. Mai per date passate.
     const today=new Date().toLocaleDateString('en-CA',{timeZone:'Europe/Rome'});
-    if(padre.dataInizio>today||(padre.dataFine&&padre.dataFine<today))
-      return res.status(409).json({message:'Contratto padre non in vigore: non si gestiscono contratti futuri o scaduti'});
+    if(dataInizio<today)
+      return res.status(409).json({message:'La comunicazione deve riguardare prestazioni future'});
     // Il blocco è sul giorno, non sul solo intervallo identico. Una bozza già presente
     // impedisce una seconda creazione; eventuali annullamenti vanno gestiti separatamente.
     let connection;
