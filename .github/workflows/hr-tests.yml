@@ -1,0 +1,27 @@
+name: HR refactoring regression tests
+
+on:
+  push:
+    branches:
+      - refactor/modulohr-regole-20261117
+  pull_request:
+    paths:
+      - "services/hr*"
+      - "routes/api/hrWorkflow.js"
+      - "routes/api/chiamateIntermittentiHR.js"
+      - "middleware/hrAccess.js"
+      - "tests/**"
+      - "package.json"
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Node runtime
+        run: node --version
+      - name: Run HR regression tests
+        run: npm test

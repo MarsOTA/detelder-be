@@ -59,7 +59,7 @@ router.get('/config/datore',resolve,async(req,res,next)=>{
    res.json(rows[0]||{codiceFiscale:"13066390967",email:"info@detelder.com"});
  }catch(e){next(e);}
 });
-router.put('/config/datore',resolve,async(req,res,next)=>{
+router.put('/config/datore',resolve,allow('ADMIN'),async(req,res,next)=>{
  try{
   const cf=String(req.body?.codiceFiscale||"").trim().toUpperCase();
   const email=String(req.body?.email||"").trim();
@@ -95,7 +95,7 @@ const list = async(req,res,next) => {
   } catch(e){next(e);}
 };
 router.get('/:idOperatore/:idContratto',resolve,list);
-router.post('/:idOperatore/:idContratto',resolve,async(req,res,next)=>{
+router.post('/:idOperatore/:idContratto',resolve,allow('HR'),async(req,res,next)=>{
   try {
     const {idOperatore,idContratto}=req.params;
     const {dataInizio,dataFine,xml}=req.body;
@@ -110,7 +110,7 @@ router.post('/:idOperatore/:idContratto',resolve,async(req,res,next)=>{
   }catch(e){next(e);}
 });
 // Test only: record an explicit simulated email outcome, never a certified PEC delivery.
-router.post('/:idOperatore/:idContratto/:idChiamata/simula-invio',resolve,async(req,res,next)=>{
+router.post('/:idOperatore/:idContratto/:idChiamata/simula-invio',resolve,allow('HR'),async(req,res,next)=>{
  try{
   const {idOperatore,idContratto,idChiamata}=req.params;
   if(![idOperatore,idContratto,idChiamata].every(valido))return res.status(400).json({message:'Identificativi non validi'});
@@ -182,7 +182,7 @@ router.delete('/:idOperatore/:idContratto/simulazioni',resolve,allow('HR','ADMIN
  }catch(e){if(connection)await connection.rollback();next(e)}
  finally{if(connection)connection.release()}
 });
-router.patch('/:idOperatore/:idContratto/:idChiamata',resolve,async(req,res,next)=>{
+router.patch('/:idOperatore/:idContratto/:idChiamata',resolve,allow('HR'),async(req,res,next)=>{
   try{
     const {idOperatore,idContratto,idChiamata}=req.params;
     if(![idOperatore,idContratto,idChiamata].every(valido))return res.status(400).json({message:'Identificativi non validi'});

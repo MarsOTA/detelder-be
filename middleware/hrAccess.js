@@ -1,10 +1,11 @@
 const db=require('../db');
+const {effectiveRole,hasRole}=require('../services/hrPermissions');
 let migration=null;
 async function init(){
  if(!migration)migration=(async()=>{
   await db.query(`CREATE TABLE IF NOT EXISTS hr_ruoli_assegnati (
     idOperatore BIGINT NOT NULL PRIMARY KEY,
-    ruolo ENUM('ADMIN','HR') NOT NULL,
+    ruolo ENUM('ADMIN','HR','ADMIN_HR') NOT NULL,
     assegnatoDa BIGINT NULL,
     aggiornatoIl TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
@@ -61,11 +62,11 @@ async function resolve(req,res,next){
   }
   const [[row]]=await db.query('SELECT ruolo FROM hr_ruoli_assegnati WHERE idOperatore=?',[id]);
   // Preserve existing admin access; explicit HR role overrides only in module HR.
-  const role=row?.ruolo || (dip.ruolo==='ADMIN'?'ADMIN':null);
+  const role=effectiveRole(dip.ruolo,row?.ruolo);
   if(!role)return res.status(403).json({message:'Non abilitato al modulo HR'});
   req.hrIdentity={id,role};
   next();
  }catch(e){next(e)}
 }
-const allow=(...roles)=>(req,res,next)=>roles.includes(req.hrIdentity?.role)?next():res.status(403).json({message:'Operazione non consentita al ruolo corrente'});
+const allow=(...roles)=>(req,res,next)=>hasRole(req.hrIdentity?.role,roles)?next():res.status(403).json({message:'Operazione non consentita al ruolo corrente'});
 module.exports={init,resolve,allow};

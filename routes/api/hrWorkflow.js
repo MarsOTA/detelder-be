@@ -197,13 +197,13 @@ router.patch('/pratiche/:id/stato',allow('HR'),async(req,res,next)=>{let conn;tr
 }catch(e){if(conn)await conn.rollback();next(e)}finally{if(conn)conn.release()}});
 router.get('/utenti',allow('ADMIN'),async(req,res,next)=>{try{
  const [rows]=await db.query(`SELECT d.id,d.nome,d.cognome,d.email,d.ruolo AS ruoloPrincipale,
- COALESCE(h.ruolo,CASE WHEN d.ruolo='ADMIN' THEN 'ADMIN' END) AS ruoloHR
+ CASE WHEN d.ruolo='ADMIN' AND h.ruolo='HR' THEN 'ADMIN_HR' ELSE COALESCE(h.ruolo,CASE WHEN d.ruolo='ADMIN' THEN 'ADMIN' END) END AS ruoloHR
  FROM dipendenti d LEFT JOIN hr_ruoli_assegnati h ON h.idOperatore=d.id ORDER BY d.cognome`);
  res.json(rows);
 }catch(e){next(e)}});
 router.put('/utenti/:id/ruolo',allow('ADMIN'),async(req,res,next)=>{try{
  const role=req.body?.role;
- if(!['ADMIN','HR',null].includes(role))return res.status(400).json({message:'Ruolo non valido'});
+ if(!['ADMIN','HR','ADMIN_HR',null].includes(role))return res.status(400).json({message:'Ruolo non valido'});
  const id=Number(req.params.id);if(!Number.isSafeInteger(id)||id<=0)return res.status(400).json({message:'ID non valido'});
  const [[target]]=await db.query('SELECT id,ruolo FROM dipendenti WHERE id=?',[id]);if(!target)return res.status(404).json({message:'Utente non trovato'});
  if(role===null){if(target.ruolo==='ADMIN')return res.status(409).json({message:'Il ruolo ADMIN principale non può essere revocato qui'});await db.query('DELETE FROM hr_ruoli_assegnati WHERE idOperatore=?',[id]);}
