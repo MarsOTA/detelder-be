@@ -1,5 +1,6 @@
 const express=require('express');
 const db=require('../../db');
+const {coversDay}=require('../../services/hrCallCoverage');
 const {resolve,allow}=require('../../middleware/hrAccess');
 const router=express.Router();
 router.use(resolve);
@@ -38,13 +39,13 @@ async function reconcilePractice(p,actorId){
    WHERE idOperatore=? AND dataTurno>=CURDATE() AND dataTurno<=DATE_ADD(CURDATE(),INTERVAL 7 DAY)`,[p.idOperatore]);
   if(shifts.length){
    let calls=[];
-   try{[calls]=await db.query(`SELECT DATE_FORMAT(dataInizio,'%Y-%m-%d') AS dal,DATE_FORMAT(dataFine,'%Y-%m-%d') AS al,esitoInvio
+   try{[calls]=await db.query(`SELECT DATE_FORMAT(dataInizio,'%Y-%m-%d') AS dal,DATE_FORMAT(dataFine,'%Y-%m-%d') AS al,xml,esitoInvio
     FROM chiamata_intermit_hr WHERE idContratto=? AND idOperatore=? AND stato='INVIATA'
       AND (?=1 OR COALESCE(esitoInvio,'') NOT LIKE 'SIMULAZIONE TEST%')
     AND (?=0 OR NOT EXISTS (SELECT 1 FROM chiamata_intermit_hr_annullamenti_test ann WHERE ann.idChiamata=chiamata_intermit_hr.id))`,[contract.idContratto,p.idOperatore,testMode?1:0,testMode?1:0]);}
    catch(e){if(e.code!=='ER_NO_SUCH_TABLE')throw e}
-   complete=shifts.every(t=>calls.some(c=>c.dal<=t.giorno&&c.al>=t.giorno));
-   p.simulazioneTest=complete&&shifts.some(t=>calls.some(c=>c.dal<=t.giorno&&c.al>=t.giorno&&String(c.esitoInvio||"").startsWith("SIMULAZIONE TEST")));
+   complete=shifts.every(t=>calls.some(c=>coversDay(c,t.giorno)));
+   p.simulazioneTest=complete&&shifts.some(t=>calls.some(c=>coversDay(c,t.giorno)&&String(c.esitoInvio||"").startsWith("SIMULAZIONE TEST")));
   }
  }
  const target=complete?'COMPLETATO':(contract||p.presoInCaricoDa)?'IN_LAVORAZIONE':'DA_ELABORARE';
@@ -180,10 +181,10 @@ router.patch('/pratiche/:id/stato',allow('HR'),async(req,res,next)=>{let conn;tr
    const [shifts]=await conn.query(`SELECT DATE_FORMAT(dataTurno,'%Y-%m-%d') AS giorno FROM turnoOperatore
        WHERE idOperatore=? AND dataTurno BETWEEN CURDATE() AND DATE_ADD(CURDATE(),INTERVAL 7 DAY)
        GROUP BY DATE(dataTurno)`,[p.idOperatore]);
+   const [calls]=await conn.query(`SELECT DATE_FORMAT(dataInizio,'%Y-%m-%d') AS dal,DATE_FORMAT(dataFine,'%Y-%m-%d') AS al,xml
+     FROM chiamata_intermit_hr WHERE idOperatore=? AND idContratto=? AND stato='INVIATA'`,[p.idOperatore,contract.idContratto]);
    for(const shift of shifts){
-    const [calls]=await conn.query(`SELECT id FROM chiamata_intermit_hr WHERE idOperatore=? AND idContratto=? AND stato='INVIATA'
-       AND dataInizio<=? AND dataFine>=? LIMIT 1`,[p.idOperatore,contract.idContratto,shift.giorno,shift.giorno]);
-    if(!calls.length){await conn.rollback();return res.status(409).json({message:'Impossibile completare: chiamata del '+shift.giorno+' non ancora comunicata'})}
+    if(!calls.some(c=>coversDay(c,shift.giorno))){await conn.rollback();return res.status(409).json({message:'Impossibile completare: chiamata del '+shift.giorno+' non ancora comunicata'})}
    }
   }
  }

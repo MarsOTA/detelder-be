@@ -50,7 +50,7 @@ async function ensureEmployerTable() {
     aggiornatoIl TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
 }
-router.get('/config/datore',async(req,res,next)=>{
+router.get('/config/datore',resolve,async(req,res,next)=>{
  try {
    await ensureEmployerTable();
    // Dati DETELDER forniti dall'amministratore: inizializza solo se nessuna configurazione esiste.
@@ -59,7 +59,7 @@ router.get('/config/datore',async(req,res,next)=>{
    res.json(rows[0]||{codiceFiscale:"13066390967",email:"info@detelder.com"});
  }catch(e){next(e);}
 });
-router.put('/config/datore',async(req,res,next)=>{
+router.put('/config/datore',resolve,async(req,res,next)=>{
  try{
   const cf=String(req.body?.codiceFiscale||"").trim().toUpperCase();
   const email=String(req.body?.email||"").trim();
@@ -94,8 +94,8 @@ const list = async(req,res,next) => {
     res.json(rows.map(row=>({...row,annullamentoTest:!!byId.get(Number(row.id)),xmlAnnullamento:byId.get(Number(row.id))?.xml||null,esitoAnnullamento:byId.get(Number(row.id))?.esito||null})));
   } catch(e){next(e);}
 };
-router.get('/:idOperatore/:idContratto',list);
-router.post('/:idOperatore/:idContratto',async(req,res,next)=>{
+router.get('/:idOperatore/:idContratto',resolve,list);
+router.post('/:idOperatore/:idContratto',resolve,async(req,res,next)=>{
   try {
     const {idOperatore,idContratto}=req.params;
     const {dataInizio,dataFine,xml}=req.body;
@@ -110,7 +110,7 @@ router.post('/:idOperatore/:idContratto',async(req,res,next)=>{
   }catch(e){next(e);}
 });
 // Test only: record an explicit simulated email outcome, never a certified PEC delivery.
-router.post('/:idOperatore/:idContratto/:idChiamata/simula-invio',async(req,res,next)=>{
+router.post('/:idOperatore/:idContratto/:idChiamata/simula-invio',resolve,async(req,res,next)=>{
  try{
   const {idOperatore,idContratto,idChiamata}=req.params;
   if(![idOperatore,idContratto,idChiamata].every(valido))return res.status(400).json({message:'Identificativi non validi'});
@@ -134,7 +134,7 @@ router.post('/:idOperatore/:idContratto/:idChiamata/simula-annullamento',resolve
   if(!original)return res.status(404).json({message:'Chiamata non trovata'});
   if(original.stato!=='INVIATA'||!String(original.esitoInvio||'').startsWith('SIMULAZIONE TEST'))return res.status(409).json({message:'È possibile simulare l’annullamento soltanto di chiamate simulate. Per le comunicazioni reali serve il servizio email configurato.'});
   const xml=String(req.body?.xml||'');
-  if(xml.length<100||xml.length>100000||!xml.includes('<ANannullamento>1</ANannullamento>'))return res.status(400).json({message:'XML di annullamento non valido'});
+  if(xml.length<100||xml.length>100000||!/<ANannullamento\s*>\s*1\s*<\/ANannullamento\s*>/i.test(xml))return res.status(400).json({message:'XML di annullamento non valido'});
   const esito='SIMULAZIONE TEST - ANNULLAMENTO NON INVIATO - '+new Date().toISOString();
   const [record]=await db.query('INSERT IGNORE INTO chiamata_intermit_hr_annullamenti_test (idChiamata,xml,esito) VALUES(?,?,?)',[idChiamata,xml,esito]);
   if(!record.affectedRows)return res.status(409).json({message:'Annullamento test già registrato'});
@@ -182,7 +182,7 @@ router.delete('/:idOperatore/:idContratto/simulazioni',resolve,allow('HR','ADMIN
  }catch(e){if(connection)await connection.rollback();next(e)}
  finally{if(connection)connection.release()}
 });
-router.patch('/:idOperatore/:idContratto/:idChiamata',async(req,res,next)=>{
+router.patch('/:idOperatore/:idContratto/:idChiamata',resolve,async(req,res,next)=>{
   try{
     const {idOperatore,idContratto,idChiamata}=req.params;
     if(![idOperatore,idContratto,idChiamata].every(valido))return res.status(400).json({message:'Identificativi non validi'});
