@@ -40,6 +40,6 @@ test('invalid XML never falls back to broad outer period',()=>{
 });
 
 test('Acrobat/XFA annullamento accepts whitespace before closing angle bracket',()=>{
- assert.equal(hasAnnulmentFlag('<moduloIntermittenti><Campi><ANannullamento\\n>1</ANannullamento\\n></Campi></moduloIntermittenti>'),true);
+ assert.equal(hasAnnulmentFlag('<moduloIntermittenti><Campi><ANannullamento\n>1</ANannullamento\n></Campi></moduloIntermittenti>'),true);
  assert.equal(hasAnnulmentFlag('<ANannullamento>0</ANannullamento>'),false);
 });
