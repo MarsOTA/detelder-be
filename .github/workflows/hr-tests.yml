@@ -51,7 +51,11 @@ jobs:
           test "$DB_HOST" = "127.0.0.1"
           test "$DB_NAME" = "detelder_hr_ci"
           node --version
-      - name: Install dependencies without install scripts
-        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install only isolated test dependencies
+        run: |
+          mkdir -p "$RUNNER_TEMP/hr-test-deps"
+          cd "$RUNNER_TEMP/hr-test-deps"
+          npm install --no-save --package-lock=false --ignore-scripts --no-audit --no-fund express@5.1.0 mysql2@3.14.1
+          echo "NODE_PATH=$RUNNER_TEMP/hr-test-deps/node_modules" >> "$GITHUB_ENV"
       - name: Unit tests and HTTP integration tests
         run: npm test
