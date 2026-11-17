@@ -5,7 +5,8 @@
   "scripts": {
     "start": "node server",
     "dev": "npx nodemon server",
-    "db:create-test-admin": "node db/create-test-admin.js"
+    "db:create-test-admin": "node db/create-test-admin.js",
+    "test": "node --test tests/*.test.js"
   },
   "keywords": [],
   "author": "",
