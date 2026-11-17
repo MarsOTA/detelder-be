@@ -45,4 +45,7 @@ function coversDay(call, day) {
   if (!normalized) return false;
   return periodsForCall(call).some(p=>p.inizio<=normalized&&p.fine>=normalized);
 }
-module.exports={normalizeDate,extractPeriods,periodsForCall,coversDay};
+function hasAnnulmentFlag(xml) {
+  return typeof xml==='string' && /<ANannullamento\s*>\s*1\s*<\/ANannullamento\s*>/i.test(xml);
+}
+module.exports={normalizeDate,extractPeriods,periodsForCall,coversDay,hasAnnulmentFlag};

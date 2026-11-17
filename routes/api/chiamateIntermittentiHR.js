@@ -1,6 +1,7 @@
 const express = require('express');
 const db = require('../../db');
 const {resolve,allow}=require('../../middleware/hrAccess');
+const {hasAnnulmentFlag}=require('../../services/hrCallCoverage');
 const router = express.Router();
 
 // Archivio separato per le comunicazioni figlie: nessuna modifica alla tabella contratto.
@@ -134,7 +135,7 @@ router.post('/:idOperatore/:idContratto/:idChiamata/simula-annullamento',resolve
   if(!original)return res.status(404).json({message:'Chiamata non trovata'});
   if(original.stato!=='INVIATA'||!String(original.esitoInvio||'').startsWith('SIMULAZIONE TEST'))return res.status(409).json({message:'È possibile simulare l’annullamento soltanto di chiamate simulate. Per le comunicazioni reali serve il servizio email configurato.'});
   const xml=String(req.body?.xml||'');
-  if(xml.length<100||xml.length>100000||!/<ANannullamento\s*>\s*1\s*<\/ANannullamento\s*>/i.test(xml))return res.status(400).json({message:'XML di annullamento non valido'});
+  if(xml.length<100||xml.length>100000||!hasAnnulmentFlag(xml))return res.status(400).json({message:'XML di annullamento non valido'});
   const esito='SIMULAZIONE TEST - ANNULLAMENTO NON INVIATO - '+new Date().toISOString();
   const [record]=await db.query('INSERT IGNORE INTO chiamata_intermit_hr_annullamenti_test (idChiamata,xml,esito) VALUES(?,?,?)',[idChiamata,xml,esito]);
   if(!record.affectedRows)return res.status(409).json({message:'Annullamento test già registrato'});

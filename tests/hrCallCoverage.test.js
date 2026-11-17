@@ -1,7 +1,7 @@
 'use strict';
 const test=require('node:test');
 const assert=require('node:assert/strict');
-const {coversDay,extractPeriods,periodsForCall}=require('../services/hrCallCoverage');
+const {coversDay,extractPeriods,periodsForCall,hasAnnulmentFlag}=require('../services/hrCallCoverage');
 
 const exampleXml=[
   '<?xml version="1.0" encoding="UTF-8"?>',
@@ -37,4 +37,9 @@ test('legacy calls WITHOUT XML preserve original date range',()=>{
 test('invalid XML never falls back to broad outer period',()=>{
   assert.deepEqual(periodsForCall({xml:'<broken>',dal:'2026-11-18',al:'2026-11-22'}),[]);
   assert.equal(coversDay({xml:'<broken>',dal:'2026-11-18',al:'2026-11-22'},'2026-11-20'),false);
+});
+
+test('Acrobat/XFA annullamento accepts whitespace before closing angle bracket',()=>{
+ assert.equal(hasAnnulmentFlag('<moduloIntermittenti><Campi><ANannullamento\\n>1</ANannullamento\\n></Campi></moduloIntermittenti>'),true);
+ assert.equal(hasAnnulmentFlag('<ANannullamento>0</ANannullamento>'),false);
 });
