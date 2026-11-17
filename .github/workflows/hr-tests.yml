@@ -1,4 +1,4 @@
-name: HR refactoring regression tests
+name: HR isolated integration and regression
 
 on:
   push:
@@ -12,16 +12,46 @@ on:
       - "middleware/hrAccess.js"
       - "tests/**"
       - "package.json"
+      - ".github/workflows/hr-tests.yml"
 permissions:
   contents: read
 jobs:
   test:
     runs-on: ubuntu-latest
+    # Ephemeral MySQL container is destroyed at the end of this job.
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci-local-only
+          MYSQL_DATABASE: detelder_hr_ci
+          MYSQL_USER: ci_hr
+          MYSQL_PASSWORD: ci-local-only
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost --silent"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=20
+    env:
+      CI: "true"
+      DB_HOST: 127.0.0.1
+      DB_PORT: "3306"
+      DB_NAME: detelder_hr_ci
+      DB_USER: ci_hr
+      DB_PASS: ci-local-only
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
-      - name: Node runtime
-        run: node --version
-      - name: Run HR regression tests
+      - name: Confirm isolated test target
+        run: |
+          test "$CI" = true
+          test "$DB_HOST" = "127.0.0.1"
+          test "$DB_NAME" = "detelder_hr_ci"
+          node --version
+      - name: Install dependencies without install scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Unit tests and HTTP integration tests
         run: npm test
