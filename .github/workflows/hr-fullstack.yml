@@ -1,0 +1,87 @@
+name: HR true full-stack isolated E2E
+
+on:
+  push:
+    branches: [refactor/modulohr-regole-20261117]
+    paths:
+      - "tests/hrFullStack*"
+      - ".github/workflows/hr-fullstack.yml"
+      - "routes/api/hrWorkflow.js"
+      - "middleware/hrAccess.js"
+      - "services/hrPermissions.js"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fullstack:
+    runs-on: ubuntu-24.04
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: ci-local-only
+          MYSQL_DATABASE: detelder_hr_ci
+          MYSQL_USER: ci_hr
+          MYSQL_PASSWORD: ci-local-only
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost --silent"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=20
+    env:
+      CI: "true"
+      DB_HOST: 127.0.0.1
+      DB_PORT: "3306"
+      DB_NAME: detelder_hr_ci
+      DB_USER: ci_hr
+      DB_PASS: ci-local-only
+      VITE_REACT_API_URL: "http://127.0.0.1:4181/"
+    steps:
+      - name: Checkout isolated backend
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Checkout frontend refactoring branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          repository: MarsOTA/detelder-fe
+          ref: refactor/modulohr-20261117
+          path: frontend
+          persist-credentials: false
+      - name: Guard local-only test database
+        run: |
+          test "$CI" = "true"
+          test "$DB_HOST" = "127.0.0.1"
+          test "$DB_NAME" = "detelder_hr_ci"
+      - name: Install backend runtime dependencies into temporary directory
+        run: |
+          mkdir -p "$RUNNER_TEMP/ci-hr-backend"
+          cd "$RUNNER_TEMP/ci-hr-backend"
+          npm install --no-save --package-lock=false --ignore-scripts --no-audit --no-fund express@5.1.0 mysql2@3.14.1 cors@2.8.5
+          echo "NODE_PATH=$RUNNER_TEMP/ci-hr-backend/node_modules" >> "$GITHUB_ENV"
+      - name: Build frontend and install Chromium
+        working-directory: frontend
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm install --no-save --ignore-scripts --no-audit --no-fund playwright@1.56.0
+          npx playwright install --with-deps chromium
+          npm run build
+      - name: Start real HR API and real frontend (localhost only)
+        run: |
+          node tests/hrFullStackFixture.js > "$RUNNER_TEMP/hr-real-api.log" 2>&1 &
+          npm --prefix frontend run preview -- --host 127.0.0.1 --port 4173 > "$RUNNER_TEMP/hr-vite.log" 2>&1 &
+          for i in $(seq 1 60); do
+            if curl --fail --silent http://127.0.0.1:4181/auth/checkAuth >/dev/null && curl --fail --silent http://127.0.0.1:4173/ >/dev/null; then
+              echo "Both isolated services are ready"; exit 0
+            fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/hr-real-api.log"
+          cat "$RUNNER_TEMP/hr-vite.log"
+          exit 1
+      - name: Run true full-stack HR tests
+        run: |
+          cp tests/hrFullStackBrowser.mjs frontend/hrFullStackBrowser.mjs
+          cd frontend
+          node hrFullStackBrowser.mjs
