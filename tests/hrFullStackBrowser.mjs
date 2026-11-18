@@ -31,8 +31,8 @@ try{
  await admin.page.goto(fe+"/admin/modulo-hr");
  await row.waitFor({timeout:25000});
  await row.getByRole("combobox",{name:"Inquadramento"}).selectOption("CHIAMATA");
- await row.getByRole("textbox",{name:"Data inizio contratto di Fittizio"}).fill(tomorrow(2));
- await row.getByRole("textbox",{name:"Data fine contratto di Fittizio"}).fill(tomorrow(40));
+ await row.getByLabel("Data inizio contratto di Fittizio").fill(tomorrow(2));
+ await row.getByLabel("Data fine contratto di Fittizio").fill(tomorrow(40));
  await row.getByRole("button",{name:"Assegna ad HR"}).click();
  await row.getByRole("button",{name:"Assegna nuovo contratto"}).waitFor({timeout:25000});
  const rows=(await api(1,"GET","/hr-workflow/pratiche")).data;
