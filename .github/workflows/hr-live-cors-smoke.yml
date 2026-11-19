@@ -1,0 +1,40 @@
+name: HR preview CORS public preflight check
+on:
+  push:
+    branches: [refactor/modulohr-regole-20261117]
+    paths:
+      - ".github/workflows/hr-live-cors-smoke.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify-preflight:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check CORS from real external browser-like origin
+        shell: bash
+        run: |
+          set -euo pipefail
+          origin="https://detelder-fe-git-refactor-b8af07-otareposito-gmailcoms-projects.vercel.app"
+          url="https://detelder-be-git-refactor-1079de-otareposito-gmailcoms-projects.vercel.app/auth/login"
+          headers="$(mktemp)"
+          status="$(curl -sS --max-time 30 -L -D "$headers" -o /dev/null -w '%{http_code}' -X OPTIONS "$url" \
+            -H "Origin: $origin" \
+            -H "Access-Control-Request-Method: POST" \
+            -H "Access-Control-Request-Headers: content-type")"
+          echo "Preflight status: $status"
+          if [ "$status" != "204" ] && [ "$status" != "200" ]; then
+            echo "FAIL: CORS preflight did not reach Express"
+            grep -Ei '^(HTTP/|location:|content-type:|server:|x-vercel-)' "$headers" || true
+            exit 1
+          fi
+          if ! grep -Fiqx "access-control-allow-origin: $origin" <(tr -d '\r' < "$headers"); then
+            echo "FAIL: expected exact origin not allowed"
+            grep -Ei '^(access-control-|HTTP/)' "$headers" || true
+            exit 1
+          fi
+          if ! grep -iq '^access-control-allow-credentials: true' "$headers"; then
+            echo "FAIL: credentials not permitted"
+            exit 1
+          fi
+          echo "SUCCESS: public CORS preflight and credentials headers from protected backend test alias"
