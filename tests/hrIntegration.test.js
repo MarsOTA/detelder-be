@@ -21,6 +21,8 @@ test('real HR endpoints: ADMIN, HR, ADMIN_HR, unauthorized and expired contract 
   await db.query('CREATE TABLE dipendenti (id BIGINT PRIMARY KEY,ruolo VARCHAR(40),nome VARCHAR(60),cognome VARCHAR(60),email VARCHAR(80),username VARCHAR(80),telefono VARCHAR(30))');
   await db.query('CREATE TABLE sessione (sessione VARCHAR(120) PRIMARY KEY,idDipendente BIGINT)');
   await db.query('CREATE TABLE contratto (idContratto BIGINT AUTO_INCREMENT PRIMARY KEY,idOperatore BIGINT,tipologia VARCHAR(50),data_inizio DATE,path_contratto_unilav VARCHAR(250))');
+  // Emulate the pre-refactoring Aiven schema: the middleware must migrate it.
+  await db.query("CREATE TABLE hr_ruoli_assegnati (idOperatore BIGINT NOT NULL PRIMARY KEY,ruolo ENUM('ADMIN','HR') NOT NULL,assegnatoDa BIGINT NULL,aggiornatoIl TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP)");
   const fixtures=[
     [1,'ADMIN','Amministratore','Fittizio'],
     [2,'OPERATORE','Addetto','Fittizio'],
@@ -51,6 +53,8 @@ test('real HR endpoints: ADMIN, HR, ADMIN_HR, unauthorized and expired contract 
     assert.equal((await request(null,'GET','/hr-workflow/me')).status,401,'anonymous must be rejected');
     assert.equal((await request(5,'GET','/hr-workflow/me')).status,403,'operator without HR role must be rejected');
     assert.deepEqual((await request(1,'GET','/hr-workflow/me')).data,{id:1,role:'ADMIN'});
+    const [roleDefinition]=await db.query("SHOW COLUMNS FROM hr_ruoli_assegnati LIKE 'ruolo'");
+    assert.ok(String(roleDefinition[0]?.Type||'').includes("'ADMIN_HR'"),'existing Aiven role column must migrate without data loss');
 
     // HR user and combined Admin-HR come from the verified server-side role table.
     await db.query("INSERT INTO hr_ruoli_assegnati(idOperatore,ruolo,assegnatoDa) VALUES (2,'HR',1),(3,'HR',1)");
