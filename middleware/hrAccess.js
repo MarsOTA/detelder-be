@@ -9,6 +9,12 @@ async function init(){
     assegnatoDa BIGINT NULL,
     aggiornatoIl TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`);
+  // Existing Aiven test installations may still use ENUM('ADMIN','HR').
+  // Extend only this column, preserving every existing row and its role.
+  const [roleColumn]=await db.query("SHOW COLUMNS FROM hr_ruoli_assegnati LIKE 'ruolo'");
+  if(roleColumn[0]&&!String(roleColumn[0].Type).includes("'ADMIN_HR'")){
+    await db.query("ALTER TABLE hr_ruoli_assegnati MODIFY COLUMN ruolo ENUM('ADMIN','HR','ADMIN_HR') NOT NULL");
+  }
   await db.query(`CREATE TABLE IF NOT EXISTS hr_pratiche (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
     idOperatore BIGINT NOT NULL,
